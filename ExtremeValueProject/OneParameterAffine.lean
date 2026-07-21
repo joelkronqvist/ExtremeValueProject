@@ -194,8 +194,8 @@ lemma exists_interval_measure_inter_gt_mul_measure
   have comps_disjoint' :
       Pairwise (Function.onFun Disjoint fun (i : { c // c ∈ comps }) ↦ (fun x ↦ A ∩ x) i) := by
     intro i j hij
-    suffices toshow : Disjoint (i : Set ℝ) (j : Set ℝ)
-      from Disjoint.inter_right' A (Disjoint.inter_left' A toshow)
+    suffices i_j_disjoint : Disjoint (i : Set ℝ) (j : Set ℝ)
+      from Disjoint.inter_right' A (Disjoint.inter_left' A i_j_disjoint)
     exact comps_disjoint i.prop j.prop (Subtype.coe_ne_coe.mpr hij)
   have comps_open (c : Set ℝ) (c_in_comps : c ∈ comps) : IsOpen c := by
     obtain ⟨_, _, c_is_comp⟩ := c_in_comps
@@ -210,7 +210,7 @@ lemma exists_interval_measure_inter_gt_mul_measure
       _ = er * volume (A ∩ U) := by rw [← left_eq_inter.mpr U_superset_A]
       _ = er * volume (A ∩ ⋃ (i : { c : Set ℝ // c ∈ comps }), i.val) := by rw [union_S_eq_U]
       _ = er * volume (⋃ (i : { c : Set ℝ // c ∈ comps }), A ∩ i.val) := by rw [inter_iUnion]
-      _ = er * ∑' (i : { c // c ∈ comps }), volume (A ∩ i.val) := by
+      _ = er * ∑' (i : { c // c ∈ comps }), volume (A ∩ i.val)        := by
         have h :
           volume (⋃ (i : { c // c ∈ comps}), (A ∩ ·) i) =
             ∑' (i : {c // c∈ comps }), volume ((A ∩ ·) i) :=
@@ -219,7 +219,7 @@ lemma exists_interval_measure_inter_gt_mul_measure
             fun c ↦ MeasurableSet.inter A_mble (IsOpen.measurableSet (comps_open c c.prop))
         rw [h]
       _ = ∑' (i : { c // c ∈ comps }), er * volume (A ∩ i.val) := by rw [ENNReal.tsum_mul_left]
-      _ ≤ ∑' (i : { c // c ∈ comps }), volume i.val := by grw [hc]; exact Subtype.coe_prop i
+      _ ≤ ∑' (i : { c // c ∈ comps }), volume i.val  := by grw [hc]; exact Subtype.coe_prop i
       _ = volume (⋃ (i : { c // c ∈ comps }), i.val) := by
         exact (measure_iUnion
           ((pairwise_subtype_iff_pairwise_set comps Disjoint).mpr comps_disjoint)
@@ -233,12 +233,12 @@ lemma exists_interval_measure_inter_gt_mul_measure
     apply ENNReal.toReal_pos
     · apply IsOpen.measure_ne_zero volume c_open
       rwa [c_is_comp, connectedComponentIn_nonempty_iff]
-    · suffices toshow : volume c < ⊤ from LT.lt.ne_top c_lt_r_mul_A_inter_c
+    · suffices volume c < ⊤ from LT.lt.ne_top c_lt_r_mul_A_inter_c
       calc
             volume c
         _ < er * volume (A ∩ c) := gt_iff_lt.mp c_lt_r_mul_A_inter_c
-        _ ≤ er * volume A := by grw [measure_mono inter_subset_left]
-        _ < ⊤ := Ne.lt_top' (id (Ne.symm r_mul_A_ne_top))
+        _ ≤ er * volume A       := by grw [measure_mono inter_subset_left]
+        _ < ⊤                  := Ne.lt_top' (id (Ne.symm r_mul_A_ne_top))
   have c_nonempty : c.Nonempty :=
     (IsOpen.measure_pos_iff (μ := volume) c_open).mp
       ((ENNReal.toReal_lt_toReal ENNReal.zero_ne_top (LT.lt.ne_top c_lt_r_mul_A_inter_c)).mp
@@ -248,7 +248,7 @@ lemma exists_interval_measure_inter_gt_mul_measure
   · simpa [IsOpen.interior_eq c_open] using c_nonempty
   · exact c_lt_r_mul_A_inter_c
 
-lemma add_name
+lemma exists_subinterval_preserving_volume_property
     {A : Set ℝ} {a b : ℝ} {r : ENNReal} (A_mble : MeasurableSet A)
     (h : volume (Ioo a b) < r * volume (A ∩ Ioo a b)) {m : ℕ} (m_pos : 0 < m) :
     ∃ i ∈ Ico 0 m,
@@ -500,6 +500,8 @@ lemma exists_Ioo_subset_diff_self_of_measure_pos_lt_top
   · exact mem_of_mem_inter_left a_in_A
   · exact mem_of_mem_inter_left a'_mem
 
+-- TODO: immediate via exists_Ioo_subset_diff_of_measure_pos,
+-- should this just be moved after it?
 lemma exists_Ioo_subset_diff_self_of_measure_pos {A : Set ℝ}
     (A_mble : MeasurableSet A) (A_pos : 0 < volume A) :
     ∃ δ > 0, Ioo (-δ) δ ⊆ A - A := by
@@ -519,16 +521,6 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     Measure.exists_subset_measure_lt_top A_mble A_pos
   obtain ⟨B', B'_mble, B'_subset_B, B'_pos, B'_lt_top⟩ :=
     Measure.exists_subset_measure_lt_top B_mble B_pos
-  have S_lt_const_mul_S {S : Set ℝ} (S_lt_top : volume S < ⊤) (S_pos : 0 < volume S) :
-      volume S < 4 / 3 * volume S := by
-    rw (occs := .pos [1]) [← one_mul (volume S)]
-    apply ENNReal.mul_lt_mul_left
-    · exact Ne.symm (Std.ne_of_lt S_pos)
-    · exact LT.lt.ne_top S_lt_top
-    · rw [ENNReal.lt_div_iff_mul_lt]
-      · norm_num
-      · left; norm_num
-      · left; norm_num
   obtain ⟨I, ⟨I_conn, I_nonempty, I_lt_r_mul_A'_inter_I⟩⟩ :=
     exists_interval_measure_inter_gt_mul_measure
       A'_mble A'_pos A'_lt_top (show 1 < (4 : ℝ) / 3 by norm_num)
@@ -556,7 +548,7 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     apply exists_rat_btwn
     linarith [div_pos (sub_pos.mpr i₀_lt_i₁) (sub_pos.mpr j₀_lt_j₁)]
   have q_pos : 0 < (q : ℝ) := by
-    suffices toshow : 0 < (i₁ - i₀) / (j₁ - j₀) by linarith
+    suffices 0 < (i₁ - i₀) / (j₁ - j₀) by linarith
     exact div_pos (sub_pos.mpr i₀_lt_i₁) (sub_pos.mpr j₀_lt_j₁)
   have q_num_pos : 0 < q.num.toNat := by
     suffices num_pos : 0 < q.num from Int.pos_iff_toNat_pos.mp num_pos
@@ -564,16 +556,17 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
   rw [I_is_Ioo] at I_lt_r_mul_A'_inter_I
   rw [J_is_Ioo] at J_lt_r_mul_B'_inter_J
   obtain ⟨i, i_in_Ico, i_ineq⟩ :=
-    add_name A'_mble I_lt_r_mul_A'_inter_I (Rat.den_pos q)
+    exists_subinterval_preserving_volume_property A'_mble I_lt_r_mul_A'_inter_I (Rat.den_pos q)
   obtain ⟨j, j_in_Ico, j_ineq⟩ :=
-    add_name B'_mble J_lt_r_mul_B'_inter_J q_num_pos
+    exists_subinterval_preserving_volume_property B'_mble J_lt_r_mul_B'_inter_J q_num_pos
   let a := (i₀ + i / ((i₁ - i₀) * q.den))
   let b := (i₀ + (↑i + 1) / ((i₁ - i₀) * ↑q.den))
   let c := j₀ + j / ((j₁ - j₀) * q.num.toNat)
   let d := j₀ + (j + 1) / ((j₁ - j₀) * q.num.toNat)
   change volume (Ioo a b) < ENNReal.ofReal (4 / 3) * volume (A' ∩ Ioo a b) at i_ineq
   change volume (Ioo c d) < ENNReal.ofReal (4 / 3) * volume (B' ∩ Ioo c d) at j_ineq
-  obtain ⟨cd_lt_ab, half_ab_lt_cd⟩ : d - c < b - a ∧ ENNReal.ofReal (1 / 2) * volume (Ioo a b) < volume (Ioo c d) := by
+  obtain ⟨cd_lt_ab, half_ab_lt_cd⟩ :
+      d - c < b - a ∧ ENNReal.ofReal (1 / 2) * volume (Ioo a b) < volume (Ioo c d) := by
     unfold a b c d
     have hl : (i₀ + (i + 1) / ((i₁ - i₀) * q.den)) - (i₀ + i / ((i₁ - i₀) * q.den)) =
       1 / ((i₁ - i₀) * q.den) := by ring
@@ -587,20 +580,18 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     repeat rw [Real.volume_Ioo]
     rw [hl, hr]
     constructor
-    · have : q.num.toNat * (i₁ - i₀) * (1 / ((j₁ - j₀) * ↑q.num.toNat)) <
+    · have num_i₁_sub_i₀_lmul : q.num.toNat * (i₁ - i₀) * (1 / ((j₁ - j₀) * ↑q.num.toNat)) <
                q.num.toNat * (i₁ - i₀) * (1 / ((i₁ - i₀) * ↑q.den))
-           ↔ 1 / ((j₁ - j₀) * ↑q.num.toNat) < 1 / ((i₁ - i₀) * ↑q.den) := by
-        refine mul_lt_mul_iff_of_pos_left ?_
-        positivity
-      rw [← this]
-      have : q.num.toNat * (i₁ - i₀) * (1 / ((j₁ - j₀) * q.num.toNat)) = (i₁ - i₀) / (j₁ - j₀) := by
-        field
-      rw [this]
-      have : q.num.toNat * (i₁ - i₀) * (1 / ((i₁ - i₀) * q.den)) = q.num.toNat / q.den := by
+           ↔ 1 / ((j₁ - j₀) * ↑q.num.toNat) < 1 / ((i₁ - i₀) * ↑q.den) :=
+        mul_lt_mul_iff_of_pos_left (by positivity)
+      have left_simplified : q.num.toNat * (i₁ - i₀) * (1 / ((j₁ - j₀) * q.num.toNat))
+                           = (i₁ - i₀) / (j₁ - j₀) := by field
+      have right_simplified : q.num.toNat * (i₁ - i₀) * (1 / ((i₁ - i₀) * q.den))
+                            = q.num.toNat / q.den := by
         field_simp
         apply div_self
         positivity
-      rwa [this, q_revive]
+      rwa [← num_i₁_sub_i₀_lmul, left_simplified, right_simplified, q_revive]
     · have zero_lt : 0 < 1 / ((j₁ - j₀) * ↑q.num.toNat) := by
         rw [lt_div_iff₀]
         · rw [zero_mul]
@@ -608,30 +599,30 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
         · positivity
       rw [← ENNReal.ofReal_mul (by norm_num),
           ofReal_lt_ofReal_iff zero_lt]
-      have : (q.num.toNat * 2 * (i₁ - i₀)) * (1 / 2 * (1 / ((i₁ - i₀) * ↑q.den))) <
-               (q.num.toNat * 2 * (i₁ - i₀)) * (1 / ((j₁ - j₀) * ↑q.num.toNat))
-             ↔ 1 / 2 * (1 / ((i₁ - i₀) * ↑q.den)) < 1 / ((j₁ - j₀) * ↑q.num.toNat) := by
-        refine mul_lt_mul_iff_of_pos_left ?_
-        positivity
-      rw [← this]
-      have : q.num.toNat * 2 * (i₁ - i₀) * (1 / 2 * (1 / ((i₁ - i₀) * ↑q.den))) = q.num.toNat / q.den := by
+      have num_two_i₁_sub_i₀_lmul :
+            (q.num.toNat * 2 * (i₁ - i₀)) * (1 / 2 * (1 / ((i₁ - i₀) * ↑q.den))) <
+              (q.num.toNat * 2 * (i₁ - i₀)) * (1 / ((j₁ - j₀) * ↑q.num.toNat))
+          ↔ 1 / 2 * (1 / ((i₁ - i₀) * ↑q.den)) < 1 / ((j₁ - j₀) * ↑q.num.toNat) :=
+        mul_lt_mul_iff_of_pos_left (by positivity)
+      have left_simplified : q.num.toNat * 2 * (i₁ - i₀) * (1 / 2 * (1 / ((i₁ - i₀) * ↑q.den)))
+                           = q.num.toNat / q.den := by
         field_simp
         apply div_self
         positivity
-      rw [this, q_revive]
-      have : q.num.toNat * 2 * (i₁ - i₀) * (1 / ((j₁ - j₀) * ↑q.num.toNat)) = 2 * ((i₁ - i₀) / (j₁ - j₀)) := by
-        field
-      rwa [this]
+      have right_simplified : q.num.toNat * 2 * (i₁ - i₀) * (1 / ((j₁ - j₀) * ↑q.num.toNat))
+                            = 2 * ((i₁ - i₀) / (j₁ - j₀)) := by field
+      rwa [← num_two_i₁_sub_i₀_lmul, left_simplified, q_revive, right_simplified]
   let Δ := Ioo (a - c) (b - d)
   use a - c, b - d; constructor; linarith
   intro x x_in_Δ
-  have aux₃ :
+  have outer_vol :
       volume (Ioo a b) <
         ((8 / 9) : ℝ≥0∞) * (volume (A' ∩ Ioo a b) + volume ({x} + (B' ∩ Ioo c d))) := calc
         volume (Ioo a b)
     _ = (2 / 3 : ℝ≥0∞) * (volume (Ioo a b) + ENNReal.ofReal (1 / 2) * volume (Ioo a b)) := sorry
     _ ≤ (2 / 3 : ℝ≥0∞) * (volume (Ioo a b) + volume (Ioo c d)) := by grw [half_ab_lt_cd]
-    _ < (2 / 3 : ℝ≥0∞) * (ENNReal.ofReal (4 / 3) * volume (A' ∩ Ioo a b) + ENNReal.ofReal (4 / 3) * volume (B' ∩ Ioo c d)) := by
+    _ < (2 / 3 : ℝ≥0∞) * (ENNReal.ofReal (4 / 3) * volume (A' ∩ Ioo a b)
+                        + ENNReal.ofReal (4 / 3) * volume (B' ∩ Ioo c d)) := by
       apply ENNReal.mul_lt_mul_right
       · norm_num
       · exact div_ne_top (Ne.symm top_ne_ofNat) (Ne.symm (NeZero.ne' 3))
@@ -654,27 +645,25 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
         constructor <;> linarith
       grw [inter_subset_right]
       exact aux
-    · grw [aux₃]
+    · grw [outer_vol]
       rw (occs := .pos [2]) [← one_mul (volume (A' ∩ Ioo a b) + volume (_ + B' ∩ Ioo c d))]
       apply ENNReal.mul_lt_mul_left
       · by_contra h
         rw [add_eq_zero] at h
-        rw [h.left, h.right] at aux₃
-        simp at aux₃
+        rw [h.left, h.right] at outer_vol
+        simp at outer_vol
       · apply Finiteness.add_ne_top
         · suffices A'_ne_top : volume (A') ≠ ∞ from measure_inter_ne_top_of_left_ne_top A'_ne_top
           exact LT.lt.ne_top A'_lt_top
         · rw [volume_singleton_add x (MeasurableSet.inter B'_mble measurableSet_Ioo)]
           suffices B'_ne_top : volume (B') ≠ ∞ from measure_inter_ne_top_of_left_ne_top B'_ne_top
           exact LT.lt.ne_top B'_lt_top
-      · rw [ENNReal.div_lt_iff] <;> norm_num -- TODO try clearing divisions & norm_num elsewhere
-  obtain ⟨a', ⟨⟨a'_in_A', a'_in_ab⟩, a'_in_x_add_B'_inter_cd⟩⟩ := inter_nonempty
-  obtain ⟨x', ⟨x'_in_x, ⟨b', ⟨⟨b'_in_B, b'_in_cd⟩, b'_sum⟩⟩⟩⟩ := a'_in_x_add_B'_inter_cd
-  beta_reduce at b'_sum
+      · rw [ENNReal.div_lt_iff] <;> norm_num
+  obtain ⟨a', ⟨⟨a'_in_A', a'_in_ab⟩, ⟨x', ⟨x'_in_x, ⟨b', ⟨⟨b'_in_B, b'_in_cd⟩, b'_sum⟩⟩⟩⟩⟩⟩ :=
+    inter_nonempty
   rw [show x = a' - b' by simp [← b'_sum, show x' = x by trivial]]
-  apply Set.sub_mem_sub
-  · exact mem_of_subset_of_mem A'_subset_A a'_in_A'
-  · exact mem_of_subset_of_mem B'_subset_B b'_in_B
+  exact Set.sub_mem_sub
+    (mem_of_subset_of_mem A'_subset_A a'_in_A') (mem_of_subset_of_mem B'_subset_B b'_in_B)
 
 lemma exists_Ioo_subset_add_of_measure_pos {A : Set ℝ}
     (A_mble : MeasurableSet A) (A_pos : 0 < volume A) :
