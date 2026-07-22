@@ -249,12 +249,97 @@ lemma exists_interval_measure_inter_gt_mul_measure
   · exact c_lt_r_mul_A_inter_c
 
 lemma exists_subinterval_preserving_volume_property
-    {A : Set ℝ} {a b : ℝ} {r : ENNReal} (A_mble : MeasurableSet A)
-    (h : volume (Ioo a b) < r * volume (A ∩ Ioo a b)) {m : ℕ} (m_pos : 0 < m) :
-    ∃ i ∈ Ico 0 m,
+    {A : Set ℝ} {a b : ℝ} (a_le_b : a < b) {r : ENNReal} (r_pos : 0 < r)
+    (A_mble : MeasurableSet A) (h : volume (Ioo a b) < r * volume (A ∩ Ioo a b))
+    {m : ℕ} (m_pos : 0 < m) :
+    ∃ i : Fin m,
                volume (Ioo (a + i / ((b - a) * m)) (a + (i + 1) / ((b - a) * m))) <
       r * volume (A ∩ (Ioo (a + i / ((b - a) * m)) (a + (i + 1) / ((b - a) * m)))) := by
-  sorry
+  let j₀ (i : ℕ) := a + i / ((b - a) * m)
+  let j₁ (i : ℕ) := a + (i + 1) / ((b - a) * m)
+  have j₁_eq_j₀_comp_add_one : j₁ = j₀ ∘ (· + 1) := by
+    ext i
+    unfold j₁
+    exact_mod_cast rfl
+  have j₀_mono : Monotone j₀ := by
+    intro i j i_le_j
+    unfold j₀
+    apply add_le_add_right
+    apply (div_le_div_iff_of_pos_right (show 0 < ((b - a) * m) by positivity)).mpr
+    exact_mod_cast i_le_j
+  have j₁_mono : Monotone j₁ := by
+    rw [j₁_eq_j₀_comp_add_one]
+    exact Monotone.comp j₀_mono add_left_mono
+  let J (i : ℕ) := Ioo (j₀ i) (j₁ i)
+  have t (i : Fin m) : (J i) ⊆ Ioo a b := by
+    by_cases i_ne_zero : (i : ℕ) = 0
+    · rw [i_ne_zero]
+      unfold J j₀ j₁
+      simp [zero_div]
+      apply Ioo_subset_Ioo
+      · rfl
+      · sorry
+      done
+    let i_lt_m := i.prop
+    intro x hx
+    unfold J j₀ j₁ at hx
+    rw [Set.mem_Ioo] at hx ⊢
+    obtain ⟨l, r⟩ := hx
+    have : 0 ≤ i / ((b - a) * m) := by positivity
+    have : i / ((b - a) * m) < (b - a) := sorry
+    have : a < a + ↑↑i / ((b - a) * ↑m) := sorry
+    have : a + (i + 1) / ((b - a) * ↑m) < b := sorry
+    constructor <;> linarith
+  have J_disj : Pairwise (Function.onFun Disjoint fun i : Fin m ↦ J i) := by
+    intro i j i_ne_j
+    unfold Function.onFun
+    rw [Set.Ioo_disjoint_Ioo]
+    rw [← Monotone.map_min j₁_mono]
+    rw [← Monotone.map_max j₀_mono]
+    have : (min i j : ℕ) + 1 ≤ max i j := by
+      have : (min i j : ℕ) < max i j := by
+        exact_mod_cast inf_lt_sup.mpr i_ne_j
+      exact Order.add_one_le_iff.mpr this
+    show j₁ (min i j) ≤ j₀ (max i j)
+    unfold j₁
+    exact_mod_cast Monotone.imp j₀_mono this
+  have ttt : volume (A ∩ ⋃ (i : Fin m), J i) = volume (A ∩ Ioo a b) := by
+    apply MeasureTheory.measure_eq_measure_of_null_sdiff
+    · apply Set.inter_subset_inter_right
+      exact iUnion_subset t
+    · suffices no_A : volume (Ioo a b \ (⋃ i : Fin m, J i)) = 0 by
+        have subs : (A ∩ Ioo a b) \ (A ∩ ⋃ i : Fin m, J i) ⊆ Ioo a b \ (⋃ i : Fin m, J i) := by
+          rw [← Set.inter_sdiff_distrib_left]
+          exact inter_subset_right
+        exact Measure.mono_null subs no_A
+      have : Ioo a b \ ⋃ i : Fin m, J i = ⋃ i : Fin (m + 1), {j₀ i} := by
+        ext x; constructor <;> intro hx
+        · sorry
+        · rw [Set.mem_sdiff]; constructor
+          · rcases hx with ⟨ji, ⟨fin_ind, ji_eq_j_fin_ind⟩, x_in_ji⟩
+            beta_reduce at ji_eq_j_fin_ind
+            rw [← ji_eq_j_fin_ind] at x_in_ji
+            sorry
+          · sorry
+      rw [this]
+      rw [measure_null_iff_singleton]
+      · exact fun x a ↦ volume_singleton
+      · apply Set.countable_iUnion
+        exact (fun i ↦ countable_singleton (j₀ ↑i))
+  by_contra hc
+  change ¬∃ i : Fin m, volume (J i) < r * volume (A ∩ J i) at hc
+  rw [not_exists] at hc
+  have contradiction : r * volume (A ∩ Ioo a b) ≤ volume (Ioo a b) := calc
+        r * volume (A ∩ Ioo a b)
+    _ = r * volume (A ∩ ⋃ (i : Fin m), J i) := by rw [ttt]
+    _ = r * volume (⋃ (i : Fin m), A ∩ J i) := by rw [Set.inter_iUnion]
+    _ ≤ r * ∑ i : Fin m, volume (A ∩ J i)   := by grw [MeasureTheory.measure_iUnion_fintype_le]
+    _ = ∑ i : Fin m, r * volume (A ∩ J i)   := by rw [Finset.mul_sum]
+    _ ≤ ∑ i : Fin m, volume (J i)           := Finset.sum_le_sum fun i hi ↦ le_of_not_gt (hc i)
+    _ ≤ ∑' i : Fin m, volume (J i)          := ENNReal.sum_le_tsum Finset.univ
+    _ = volume (⋃ i : Fin m, J i)           := (MeasureTheory.measure_iUnion J_disj (by aesop)).symm
+    _ ≤ volume (Ioo a b)                    := MeasureTheory.measure_mono (iUnion_subset t)
+  exact (Std.not_lt.mpr contradiction) h
 
 lemma isPreconnected_of_Ioo_subset_of_subset_Icc
     {J : Set ℝ} {a b : ℝ} (J_ge : Ioo a b ⊆ J) (J_le : J ⊆ Icc a b) :
@@ -555,12 +640,16 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     exact Rat.num_pos.mpr (by exact_mod_cast q_pos)
   rw [I_is_Ioo] at I_lt_r_mul_A'_inter_I
   rw [J_is_Ioo] at J_lt_r_mul_B'_inter_J
-  obtain ⟨i, i_in_Ico, i_ineq⟩ :=
-    exists_subinterval_preserving_volume_property A'_mble I_lt_r_mul_A'_inter_I (Rat.den_pos q)
-  obtain ⟨j, j_in_Ico, j_ineq⟩ :=
-    exists_subinterval_preserving_volume_property B'_mble J_lt_r_mul_B'_inter_J q_num_pos
+  obtain ⟨i, i_ineq⟩ :=
+    exists_subinterval_preserving_volume_property
+      i₀_lt_i₁ (show 0 < ENNReal.ofReal (4 / 3) by norm_num)
+      A'_mble I_lt_r_mul_A'_inter_I (Rat.den_pos q)
+  obtain ⟨j, j_ineq⟩ :=
+    exists_subinterval_preserving_volume_property
+      j₀_lt_j₁ (show 0 < ENNReal.ofReal (4 / 3) by norm_num)
+      B'_mble J_lt_r_mul_B'_inter_J q_num_pos
   let a := (i₀ + i / ((i₁ - i₀) * q.den))
-  let b := (i₀ + (↑i + 1) / ((i₁ - i₀) * ↑q.den))
+  let b := (i₀ + (i + 1) / ((i₁ - i₀) * ↑q.den))
   let c := j₀ + j / ((j₁ - j₀) * q.num.toNat)
   let d := j₀ + (j + 1) / ((j₁ - j₀) * q.num.toNat)
   change volume (Ioo a b) < ENNReal.ofReal (4 / 3) * volume (A' ∩ Ioo a b) at i_ineq
