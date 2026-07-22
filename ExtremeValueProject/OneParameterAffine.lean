@@ -253,10 +253,10 @@ lemma exists_subinterval_preserving_volume_property
     (A_mble : MeasurableSet A) (h : volume (Ioo a b) < r * volume (A ∩ Ioo a b))
     {m : ℕ} (m_pos : 0 < m) :
     ∃ i : Fin m,
-               volume (Ioo (a + i / ((b - a) * m)) (a + (i + 1) / ((b - a) * m))) <
-      r * volume (A ∩ (Ioo (a + i / ((b - a) * m)) (a + (i + 1) / ((b - a) * m)))) := by
-  let j₀ (i : ℕ) := a + i / ((b - a) * m)
-  let j₁ (i : ℕ) := a + (i + 1) / ((b - a) * m)
+               volume (Ioo (a + (b - a) * (i / m)) (a + (b - a) * ((i + 1) / m))) <
+      r * volume (A ∩ (Ioo (a + (b - a) * (i / m)) (a + (b - a) * ((i + 1) / m)))) := by
+  let j₀ (i : ℕ) := a + (b - a) * (i / m)
+  let j₁ (i : ℕ) := a + (b - a) * ((i + 1) / m)
   have j₁_eq_j₀_comp_add_one : j₁ = j₀ ∘ (· + 1) := by
     ext i
     unfold j₁
@@ -265,31 +265,84 @@ lemma exists_subinterval_preserving_volume_property
     intro i j i_le_j
     unfold j₀
     apply add_le_add_right
-    apply (div_le_div_iff_of_pos_right (show 0 < ((b - a) * m) by positivity)).mpr
+    apply (mul_le_mul_iff_right₀ (show 0 < b - a by positivity)).mpr
+    apply (div_le_div_iff_of_pos_right (by exact_mod_cast m_pos)).mpr
     exact_mod_cast i_le_j
   have j₁_mono : Monotone j₁ := by
     rw [j₁_eq_j₀_comp_add_one]
     exact Monotone.comp j₀_mono add_left_mono
   let J (i : ℕ) := Ioo (j₀ i) (j₁ i)
-  have t (i : Fin m) : (J i) ⊆ Ioo a b := by
+  have Ji_sub_Ioo (i : Fin m) : (J i) ⊆ Ioo a b := by
     by_cases i_ne_zero : (i : ℕ) = 0
     · rw [i_ne_zero]
       unfold J j₀ j₁
       simp [zero_div]
       apply Ioo_subset_Ioo
       · rfl
-      · sorry
-      done
-    let i_lt_m := i.prop
+      · grw [Nat.cast_inv_le_one m]
+        linarith
+        positivity
     intro x hx
     unfold J j₀ j₁ at hx
     rw [Set.mem_Ioo] at hx ⊢
     obtain ⟨l, r⟩ := hx
-    have : 0 ≤ i / ((b - a) * m) := by positivity
-    have : i / ((b - a) * m) < (b - a) := sorry
-    have : a < a + ↑↑i / ((b - a) * ↑m) := sorry
-    have : a + (i + 1) / ((b - a) * ↑m) < b := sorry
+    have : 0 < (b - a) * (i / m) := by positivity
+    have aux : (b - a) * ((i + 1) / m) ≤ (b - a) := by
+      rw (occs := .pos [2]) [← mul_one (b - a)] 
+      apply mul_le_mul_of_nonneg_left
+      · rw [div_le_one]
+        · suffices i_lt_m : i < m by exact_mod_cast i_lt_m
+          exact_mod_cast i.prop
+        · positivity
+      · positivity
+    have : a < a + (b - a) * (i / m) := by linarith
+    have : a + (b - a) * ((i + 1) / m) ≤ b := by linarith
     constructor <;> linarith
+    
+  have (m : ℕ) : Ioo (j₀ 0) (j₁ m) \ ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)
+                  = ⋃ i : Fin m, {j₁ i} := by
+    induction m with
+    | zero =>
+        unfold j₀ j₁
+        simp
+        rw [Set.sdiff_eq_empty, Set.iUnion_const]
+    | succ m ih =>
+        have (a b c : ℝ) (hab : a < b) (hbc : b < c) :
+          Ioo a b ∪ Ioo b c = Ioo a c \ {b} := by sorry -- grind works
+        have : Ioo (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1))
+             = Ioo (j₀ 0) (j₁ (m + 1)) \ {j₁ m} := by
+          apply this
+          · sorry -- these are just (strict) monotonicity
+          · sorry -- of j₀ and j₁
+        -- tons of set and index manipulation
+        -- but should be provable
+        sorry
+                  
+    /-ext x; constructor <;> intro hx
+    · simp
+      
+      by_contra hc
+      sorry
+    · simp [Set.mem_iUnion, Set.mem_Ioo]
+      constructor
+      · simp at hx
+        obtain ⟨y, hy⟩ := hx
+        rw [← hy]
+        constructor
+        · rw [j₁_eq_j₀_comp_add_one]
+          dsimp
+          suffices (0 : ℝ) < y + 1 by sorry -- we need strict monotonicity
+          exact Nat.cast_add_one_pos y
+        · -- strict monotonicity
+          sorry
+      · intro y hy
+        rw [j₁_eq_j₀_comp_add_one]
+        dsimp
+        grw [← hy]
+        -- this does not hold
+        sorry-/
+      
+
   have J_disj : Pairwise (Function.onFun Disjoint fun i : Fin m ↦ J i) := by
     intro i j i_ne_j
     unfold Function.onFun
@@ -306,13 +359,16 @@ lemma exists_subinterval_preserving_volume_property
   have ttt : volume (A ∩ ⋃ (i : Fin m), J i) = volume (A ∩ Ioo a b) := by
     apply MeasureTheory.measure_eq_measure_of_null_sdiff
     · apply Set.inter_subset_inter_right
-      exact iUnion_subset t
+      exact iUnion_subset Ji_sub_Ioo
     · suffices no_A : volume (Ioo a b \ (⋃ i : Fin m, J i)) = 0 by
         have subs : (A ∩ Ioo a b) \ (A ∩ ⋃ i : Fin m, J i) ⊆ Ioo a b \ (⋃ i : Fin m, J i) := by
           rw [← Set.inter_sdiff_distrib_left]
           exact inter_subset_right
         exact Measure.mono_null subs no_A
-      have : Ioo a b \ ⋃ i : Fin m, J i = ⋃ i : Fin (m + 1), {j₀ i} := by
+      have (a b c : ℝ) (hab : a < b) (hbc : b < c) : Ioo a c = Ioo a b ∪ {b} ∪ Ioo b c := by sorry -- grind
+      
+            
+      have : Ioo a b \ ⋃ i : Fin m, J i = ⋃ i : Fin (m - 1), {j₁ i} := by
         ext x; constructor <;> intro hx
         · sorry
         · rw [Set.mem_sdiff]; constructor
@@ -325,7 +381,7 @@ lemma exists_subinterval_preserving_volume_property
       rw [measure_null_iff_singleton]
       · exact fun x a ↦ volume_singleton
       · apply Set.countable_iUnion
-        exact (fun i ↦ countable_singleton (j₀ ↑i))
+        exact (fun i ↦ countable_singleton (j₁ ↑i))
   by_contra hc
   change ¬∃ i : Fin m, volume (J i) < r * volume (A ∩ J i) at hc
   rw [not_exists] at hc
@@ -338,7 +394,7 @@ lemma exists_subinterval_preserving_volume_property
     _ ≤ ∑ i : Fin m, volume (J i)           := Finset.sum_le_sum fun i hi ↦ le_of_not_gt (hc i)
     _ ≤ ∑' i : Fin m, volume (J i)          := ENNReal.sum_le_tsum Finset.univ
     _ = volume (⋃ i : Fin m, J i)           := (MeasureTheory.measure_iUnion J_disj (by aesop)).symm
-    _ ≤ volume (Ioo a b)                    := MeasureTheory.measure_mono (iUnion_subset t)
+    _ ≤ volume (Ioo a b)                    := MeasureTheory.measure_mono (iUnion_subset Ji_sub_Ioo)
   exact (Std.not_lt.mpr contradiction) h
 
 lemma isPreconnected_of_Ioo_subset_of_subset_Icc
@@ -629,9 +685,9 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     rw [J_is_Ioo, mem_Ioo] at x_in_J
     linarith
   obtain ⟨q, lt_q, q_lt⟩ :
-      ∃ q : ℚ, ((i₁ - i₀) / (j₁ - j₀)) < q ∧ q < (2 * ((i₁ - i₀) / (j₁ - j₀))) := by
+      ∃ q : ℚ, ((j₁ - j₀) / (i₁ - i₀)) < q ∧ q < (2 * ((j₁ - j₀) / (i₁ - i₀))) := by
     apply exists_rat_btwn
-    linarith [div_pos (sub_pos.mpr i₀_lt_i₁) (sub_pos.mpr j₀_lt_j₁)]
+    linarith [div_pos (sub_pos.mpr j₀_lt_j₁) (sub_pos.mpr i₀_lt_i₁)]
   have q_pos : 0 < (q : ℝ) := by
     suffices 0 < (i₁ - i₀) / (j₁ - j₀) by linarith
     exact div_pos (sub_pos.mpr i₀_lt_i₁) (sub_pos.mpr j₀_lt_j₁)
@@ -648,19 +704,20 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     exists_subinterval_preserving_volume_property
       j₀_lt_j₁ (show 0 < ENNReal.ofReal (4 / 3) by norm_num)
       B'_mble J_lt_r_mul_B'_inter_J q_num_pos
-  let a := (i₀ + i / ((i₁ - i₀) * q.den))
-  let b := (i₀ + (i + 1) / ((i₁ - i₀) * ↑q.den))
-  let c := j₀ + j / ((j₁ - j₀) * q.num.toNat)
-  let d := j₀ + (j + 1) / ((j₁ - j₀) * q.num.toNat)
+  let a := (i₀ + (i₁ - i₀) * (i / q.den))
+  let b := (i₀ + (i₁ - i₀) * ((i + 1) / q.den))
+  let c := j₀ + (j₁ - j₀) * (j / q.num.toNat)
+  let d := j₀ + (j₁ - j₀) * ((j + 1) / q.num.toNat)
   change volume (Ioo a b) < ENNReal.ofReal (4 / 3) * volume (A' ∩ Ioo a b) at i_ineq
   change volume (Ioo c d) < ENNReal.ofReal (4 / 3) * volume (B' ∩ Ioo c d) at j_ineq
   obtain ⟨cd_lt_ab, half_ab_lt_cd⟩ :
       d - c < b - a ∧ ENNReal.ofReal (1 / 2) * volume (Ioo a b) < volume (Ioo c d) := by
     unfold a b c d
-    have hl : (i₀ + (i + 1) / ((i₁ - i₀) * q.den)) - (i₀ + i / ((i₁ - i₀) * q.den)) =
-      1 / ((i₁ - i₀) * q.den) := by ring
-    have hr : (j₀ + (j + 1) / ((j₁ - j₀) * q.num.toNat) - (j₀ + j / ((j₁ - j₀) * q.num.toNat))) =
-      1 / ((j₁ - j₀) * q.num.toNat) := by ring
+    
+    have hl : i₀ + (i₁ - i₀) * ((↑↑i + 1) / ↑q.den) - (i₀ + (i₁ - i₀) * (↑↑i / ↑q.den))
+            = (i₁ - i₀) / q.den := by ring    
+    have hr : j₀ + (j₁ - j₀) * ((j + 1) / ↑q.num.toNat) - (j₀ + (j₁ - j₀) * (j / ↑q.num.toNat))
+            = (j₁ - j₀) / q.num.toNat := by ring
     have q_revive : (q.num.toNat / q.den : ℝ) = (q : ℝ) := by
       have num_tonat_eq_num : (q.num.toNat : ℝ) = (q.num : ℝ) := by
         have num_nonneg : 0 ≤ q.num := Rat.num_nonneg.mpr (Rat.le_of_lt (by exact_mod_cast q_pos))
@@ -669,37 +726,35 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     repeat rw [Real.volume_Ioo]
     rw [hl, hr]
     constructor
-    · have num_i₁_sub_i₀_lmul : q.num.toNat * (i₁ - i₀) * (1 / ((j₁ - j₀) * ↑q.num.toNat)) <
-               q.num.toNat * (i₁ - i₀) * (1 / ((i₁ - i₀) * ↑q.den))
-           ↔ 1 / ((j₁ - j₀) * ↑q.num.toNat) < 1 / ((i₁ - i₀) * ↑q.den) :=
+    · have num_i₁_sub_i₀_lmul : q.num.toNat / (i₁ - i₀) * ((j₁ - j₀) / q.num.toNat) <
+               q.num.toNat / (i₁ - i₀) * ((i₁ - i₀) / q.den)
+           ↔ (j₁ - j₀) / ↑q.num.toNat < (i₁ - i₀) / q.den :=
         mul_lt_mul_iff_of_pos_left (by positivity)
-      have left_simplified : q.num.toNat * (i₁ - i₀) * (1 / ((j₁ - j₀) * q.num.toNat))
-                           = (i₁ - i₀) / (j₁ - j₀) := by field
-      have right_simplified : q.num.toNat * (i₁ - i₀) * (1 / ((i₁ - i₀) * q.den))
+      
+      have left_simplified : q.num.toNat / (i₁ - i₀) * ((j₁ - j₀) / q.num.toNat)
+                           = (j₁ - j₀) / (i₁ - i₀) := by field
+      have right_simplified : q.num.toNat / (i₁ - i₀) * ((i₁ - i₀) / q.den)
                             = q.num.toNat / q.den := by
         field_simp
         apply div_self
         positivity
       rwa [← num_i₁_sub_i₀_lmul, left_simplified, right_simplified, q_revive]
-    · have zero_lt : 0 < 1 / ((j₁ - j₀) * ↑q.num.toNat) := by
-        rw [lt_div_iff₀]
-        · rw [zero_mul]
-          norm_num
-        · positivity
+    · have zero_lt : 0 < (j₁ - j₀) / q.num.toNat := by positivity
       rw [← ENNReal.ofReal_mul (by norm_num),
           ofReal_lt_ofReal_iff zero_lt]
+      
       have num_two_i₁_sub_i₀_lmul :
-            (q.num.toNat * 2 * (i₁ - i₀)) * (1 / 2 * (1 / ((i₁ - i₀) * ↑q.den))) <
-              (q.num.toNat * 2 * (i₁ - i₀)) * (1 / ((j₁ - j₀) * ↑q.num.toNat))
-          ↔ 1 / 2 * (1 / ((i₁ - i₀) * ↑q.den)) < 1 / ((j₁ - j₀) * ↑q.num.toNat) :=
+            (q.num.toNat * 2 / (i₁ - i₀)) * (1 / 2 * ((i₁ - i₀) / q.den)) <
+              (q.num.toNat * 2 / (i₁ - i₀)) * ((j₁ - j₀) / q.num.toNat)
+          ↔ 1 / 2 * ((i₁ - i₀) / ↑q.den) < (j₁ - j₀) / ↑q.num.toNat :=
         mul_lt_mul_iff_of_pos_left (by positivity)
-      have left_simplified : q.num.toNat * 2 * (i₁ - i₀) * (1 / 2 * (1 / ((i₁ - i₀) * ↑q.den)))
+      have left_simplified : (q.num.toNat * 2 / (i₁ - i₀)) * (1 / 2 * ((i₁ - i₀) / q.den))
                            = q.num.toNat / q.den := by
         field_simp
         apply div_self
         positivity
-      have right_simplified : q.num.toNat * 2 * (i₁ - i₀) * (1 / ((j₁ - j₀) * ↑q.num.toNat))
-                            = 2 * ((i₁ - i₀) / (j₁ - j₀)) := by field
+      have right_simplified : (q.num.toNat * 2 / (i₁ - i₀)) * ((j₁ - j₀) / q.num.toNat)
+                            = 2 * ((j₁ - j₀) / (i₁ - i₀)) := by field
       rwa [← num_two_i₁_sub_i₀_lmul, left_simplified, q_revive, right_simplified]
   let Δ := Ioo (a - c) (b - d)
   use a - c, b - d; constructor; linarith
