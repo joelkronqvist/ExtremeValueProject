@@ -425,7 +425,7 @@ lemma exists_subinterval_preserving_volume_property
     show j₁ (min i j) ≤ j₀ (max i j)
     unfold j₁
     exact_mod_cast Monotone.imp j₀_mono.monotone this
-  have ttt : volume (A ∩ ⋃ (i : Fin m), J i) = volume (A ∩ Ioo a b) := by
+  have interval_eq_subintervals : volume (A ∩ ⋃ (i : Fin m), J i) = volume (A ∩ Ioo a b) := by
     apply MeasureTheory.measure_eq_measure_of_null_sdiff
     · apply Set.inter_subset_inter_right
       exact iUnion_subset Ji_sub_Ioo
@@ -458,7 +458,7 @@ lemma exists_subinterval_preserving_volume_property
   rw [not_exists] at hc
   have contradiction : r * volume (A ∩ Ioo a b) ≤ volume (Ioo a b) := calc
         r * volume (A ∩ Ioo a b)
-    _ = r * volume (A ∩ ⋃ (i : Fin m), J i) := by rw [ttt]
+    _ = r * volume (A ∩ ⋃ (i : Fin m), J i) := by rw [interval_eq_subintervals]
     _ = r * volume (⋃ (i : Fin m), A ∩ J i) := by rw [Set.inter_iUnion]
     _ ≤ r * ∑ i : Fin m, volume (A ∩ J i)   := by grw [MeasureTheory.measure_iUnion_fintype_le]
     _ = ∑ i : Fin m, r * volume (A ∩ J i)   := by rw [Finset.mul_sum]
@@ -768,13 +768,9 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
   rw [I_is_Ioo] at I_lt_r_mul_A'_inter_I
   rw [J_is_Ioo] at J_lt_r_mul_B'_inter_J
   obtain ⟨i, i_ineq⟩ :=
-    exists_subinterval_preserving_volume_property
-      i₀_lt_i₁ (show 0 < ENNReal.ofReal (4 / 3) by norm_num)
-      A'_mble I_lt_r_mul_A'_inter_I (Rat.den_pos q)
+    exists_subinterval_preserving_volume_property i₀_lt_i₁ I_lt_r_mul_A'_inter_I (Rat.den_pos q)
   obtain ⟨j, j_ineq⟩ :=
-    exists_subinterval_preserving_volume_property
-      j₀_lt_j₁ (show 0 < ENNReal.ofReal (4 / 3) by norm_num)
-      B'_mble J_lt_r_mul_B'_inter_J q_num_pos
+    exists_subinterval_preserving_volume_property j₀_lt_j₁ J_lt_r_mul_B'_inter_J q_num_pos
   let a := (i₀ + (i₁ - i₀) * (i / q.den))
   let b := (i₀ + (i₁ - i₀) * ((i + 1) / q.den))
   let c := j₀ + (j₁ - j₀) * (j / q.num.toNat)
