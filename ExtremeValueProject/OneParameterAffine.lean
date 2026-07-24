@@ -482,211 +482,112 @@ lemma measurable_iff_measurable_singleton_add (x : ℝ) (J : Set ℝ) :
     MeasurableSet J ↔ MeasurableSet ({x} + J) := by
   rw [singleton_add, MeasurableEmbedding.measurableSet_image (measurableEmbedding_addLeft x)]
 
-open TopologicalSpace ENNReal in
-lemma exists_Ioo_subset_diff_self_of_measure_pos_lt_top
-    {A : Set ℝ} (A_mble : MeasurableSet A)
-    (A_pos : 0 < volume A) (A_lt_top : volume A < ⊤) :
-    ∃ δ > 0, Ioo (-δ) δ ⊆ A - A := by
-  have A_ne_top : volume A ≠ ⊤ := LT.lt.ne_top A_lt_top
-  have c₁_ne_top : (4 / 3 : ℝ≥0∞) ≠ ⊤ :=
-    div_ne_top (Ne.symm ENNReal.top_ne_ofNat) (Ne.symm (NeZero.ne' 3))
-  have c₂_ne_top : (3 / 4 : ℝ≥0∞) ≠ ⊤ :=
+open ENNReal in
+lemma exists_Ioo_subset_diff_self_of_measure_pos {S : Set ℝ}
+    (S_mble : MeasurableSet S) (S_pos : 0 < volume S) :
+    ∃ δ > 0, Ioo (-δ) δ ⊆ S - S := by
+  obtain ⟨A, A_mble, A_subset_S, A_pos, A_lt_top⟩ :=
+    Measure.exists_subset_measure_lt_top S_mble S_pos
+  have r_ne_top : (3 / 4 : ℝ≥0∞) ≠ ⊤ :=
     div_ne_top (Ne.symm ENNReal.top_ne_ofNat) (Ne.symm (NeZero.ne' 4))
-  have c₃_ne_top : (3 / 4 * 2 : ℝ≥0∞) ≠ ⊤ :=
-    mul_ne_top c₂_ne_top (Ne.symm top_ne_ofNat)
-  have c₄_ne_top : (3 / 2 : ℝ≥0∞) ≠ ⊤ :=
-    div_ne_top (Ne.symm top_ne_ofNat) (Ne.symm (NeZero.ne' 2))
-  have const_mul_A_ne_top : (4 / 3 : ENNReal) * volume A ≠ ⊤ := by
-    exact mul_ne_top c₁_ne_top A_ne_top
-  have A_lt_const_mul_A : volume A < 4 / 3 * volume A := by
-    have t := mul_lt_mul_of_pos_left
-      (by norm_num : (1 : ℝ) < 4 / 3)
-      (ENNReal.toReal_pos_iff.mpr ⟨A_pos, A_lt_top⟩)
-    rw [mul_one] at t
-    apply (ENNReal.toReal_lt_toReal A_ne_top const_mul_A_ne_top).mp
-    simpa [ENNReal.toReal_mul, const_mul_A_ne_top, A_ne_top, mul_comm] using t
-
-  obtain ⟨U, U_superset_A, U_open, U_lt_const_mul_A⟩ :=
-    exists_isOpen_lt_of_lt (μ := volume) A ((4 / 3) * (volume A)) A_lt_const_mul_A
-
-  let comps := {C : Set ℝ | ∃ x ∈ U, C = connectedComponentIn U x}
-  have U_eq_union_comps : U = ⋃₀ comps := eq_sUnion_connectedComponentIn U
-  have comps_countable : Countable comps :=
-    IsOpen.countable_setOf_connectedComponentIn U_open
-  have comps_disjoint : comps.Pairwise Disjoint := pairwise_disjoint_connectedComponentIn U
-  have comps_open : ∀ c ∈ comps, IsOpen c := by
-    intro c c_in_comps
-    obtain ⟨_, _, c_is_comp⟩ := c_in_comps
-    simpa [c_is_comp] using IsOpen.connectedComponentIn U_open
-
-  have union_S_eq_U' : ⋃ (i : { c : Set ℝ // c ∈ comps}), i.val = U := by
-    rw [← Set.sUnion_eq_iUnion, U_eq_union_comps]
-
-  have ex_comp_with_prop : ∃ c ∈ comps, volume c < 4 / 3 * volume (A ∩ c) := by
-    have (h : ∀ c ∈ comps, 4 / 3 * volume (A ∩ c) ≤ volume c) : 4 / 3 * volume A ≤ volume U := calc
-      4 / 3 * volume A
-      _ = 4 / 3 * volume (A ∩ U) := by rw [← left_eq_inter.mpr U_superset_A]
-      _ = 4 / 3 * volume (A ∩ ⋃ (i : { c : Set ℝ // c ∈ comps }), i.val) := by rw [union_S_eq_U']
-      _ = 4 / 3 * volume (⋃ (i : { c : Set ℝ // c ∈ comps }), A ∩ i.val) := by rw [inter_iUnion]
-      _ = 4 / 3 * ∑' (i : { c // c ∈ comps }), volume (A ∩ i.val) := by
-        have h :
-          volume (⋃ (i : { c // c ∈ comps}), (A ∩ ·) i) =
-            ∑' (i : {c // c∈ comps }), volume ((A ∩ ·) i) := by
-          refine (@measure_iUnion _ _ _ _ ?_ _ ?_ ?_)
-          · exact comps_countable
-          · intro i j hij
-            suffices toshow : Disjoint (i : Set ℝ) (j : Set ℝ)
-              from Disjoint.inter_right' A (Disjoint.inter_left' A toshow)
-            exact comps_disjoint i.prop j.prop (Subtype.coe_ne_coe.mpr hij)
-          · intro i
-            exact MeasurableSet.inter A_mble (IsOpen.measurableSet (comps_open i i.prop))
-        rw [h]
-      _ = ∑' (i : { c // c ∈ comps }), 4 / 3 * volume (A ∩ i.val) := by rw [ENNReal.tsum_mul_left]
-      _ ≤ ∑' (i : { c // c ∈ comps }), volume i.val := by grw [h]; exact Subtype.coe_prop i
-      _ = volume (⋃ (i : { c // c ∈ comps }), i.val) := by
-        refine (@measure_iUnion _ _ _ _ ?_ _ ?_ ?_).symm
-        · exact comps_countable
-        · show Pairwise (Function.onFun Disjoint Subtype.val)
-          exact (pairwise_subtype_iff_pairwise_set comps Disjoint).mpr comps_disjoint
-        · exact fun c ↦ MeasurableSpace.measurableSet_generateFrom (comps_open c.val c.prop)
-      _ = volume U := by rw [union_S_eq_U']
-    have contrapositive :
-        volume U < 4 / 3 * volume A → ∃ c ∈ comps, volume c < 4 / 3 * volume (A ∩ c) := by
-      rw [← Std.not_le, not_imp_comm]
-      simpa
-    exact contrapositive U_lt_const_mul_A
-
-  obtain ⟨c, ⟨c_in_comps, c_lt_const_mul_A_inter_c⟩⟩ := ex_comp_with_prop
-  have c_is_open : IsOpen c := comps_open c c_in_comps
-  obtain ⟨_, _, c_is_comp⟩ := c_in_comps
-  have c_is_connected : IsConnected c := by
-    rwa [c_is_comp, isConnected_connectedComponentIn_iff]
-  have c_lt_top : volume c < ⊤ := lt_top_of_lt c_lt_const_mul_A_inter_c
-  have c_mble : MeasurableSet c := MeasurableSpace.measurableSet_generateFrom c_is_open
-  have c_pos : 0 < (volume c).toReal := by
-    apply ENNReal.toReal_pos
-    · apply IsOpen.measure_ne_zero volume
-      · exact c_is_open
-      · rwa [c_is_comp, connectedComponentIn_nonempty_iff]
-    · suffices toshow : volume c < ⊤ from LT.lt.ne_top c_lt_const_mul_A_inter_c
-      calc
-            volume c
-        _ < 4 / 3 * volume (A ∩ c) := gt_iff_lt.mp c_lt_const_mul_A_inter_c
-        _ ≤ 4 / 3 * volume A := by grw [measure_mono inter_subset_left]
-        _ < ⊤ := Ne.lt_top' (id (Ne.symm const_mul_A_ne_top))
-  let δ := 1 / 2 * (volume c).toReal
-  use δ; constructor; positivity
+  obtain ⟨I, ⟨I_conn, I_nonempty, I_lt_r_mul_A_inter_I⟩⟩ :=
+    exists_interval_measure_inter_gt_mul_measure
+      A_mble A_pos A_lt_top (show 1 < (4 : ℝ) / 3 by norm_num)
+  have I_open : IsOpen I := sorry
+  have I_nonempty : I.Nonempty := sorry -- obvious, the interior is nonempty
+  obtain ⟨i₀, i₁, I_is_Ioo⟩ : ∃ i₀ i₁ : ℝ, I = Ioo i₀ i₁ :=
+      eq_Ioo_of_isOpen_of_isConnected_of_isFinite
+        I_open I_conn (lt_top_of_lt I_lt_r_mul_A_inter_I)
+  have i₀_lt_i₁ : i₀ < i₁ := by
+    obtain ⟨x, x_in_I⟩ := IsConnected.nonempty I_conn
+    rw [I_is_Ioo, mem_Ioo] at x_in_I
+    linarith
+  have I_mble : MeasurableSet I := by simp [I_is_Ioo, measurableSet_Ioo]
+  have I_lt_top : volume I < ⊤ := by simpa only [I_is_Ioo] using measure_Ioo_lt_top
+  have δ_pos : 0 < 1 / 2 * (volume I).toReal := by
+    rw [show 1 = (1 : ℝ≥0∞).toReal from ext_cauchy rfl,
+        show 2 = (2 : ℝ≥0∞).toReal from ext_cauchy rfl, ← toReal_div, ← toReal_mul]
+    apply toReal_pos
+    · exact mul_ne_zero (by norm_num) (IsOpen.measure_ne_zero volume I_open I_nonempty)
+    · exact mul_ne_top (by norm_num) (Std.ne_of_lt I_lt_top)
+  let δ := 1 / 2 * (volume I).toReal
+  use δ; constructor; exact δ_pos
   intro x x_in_Ioo
-
-  have vol_outer : volume (({x} + c) ∪ c) ≤ 3 / 2 * volume c := by
+  have vol_outer : volume (({x} + I) ∪ I) ≤ 3 / 2 * volume I := by
     obtain ⟨x_lb, x_ub⟩ := Set.mem_Ioo.mp x_in_Ioo
-    have x_abs_lt : |x| < 1 / 2 * (volume c).toReal := abs_lt.mpr x_in_Ioo
-    obtain ⟨a, b, c_is_Ioo⟩ : ∃ a b : ℝ, c = Ioo a b :=
-      eq_Ioo_of_isOpen_of_isConnected_of_isFinite c_is_open c_is_connected c_lt_top
-    have c_nonempty : c.Nonempty :=
-      (IsOpen.measure_pos_iff (μ := volume) c_is_open).mp
-        ((toReal_lt_toReal zero_ne_top (LT.lt.ne_top c_lt_const_mul_A_inter_c)).mp
-          c_pos)
-    obtain ⟨t, t_in_c⟩ : ∃ t : ℝ, t ∈ c := nonempty_def.mp c_nonempty
-    rw [c_is_Ioo] at t_in_c x_abs_lt
-    obtain ⟨a_lt_t, t_lt_b⟩ := Set.mem_Ioo.mp t_in_c
-    have a_lt_b : a < b := Std.lt_trans a_lt_t t_lt_b
-    have x_abs_lt : |x| < 1 / 2 * (b - a) := by
+    have x_abs_lt : |x| < 1 / 2 * (volume I).toReal := abs_lt.mpr x_in_Ioo
+    obtain ⟨t, t_in_I⟩ : ∃ t : ℝ, t ∈ I := nonempty_def.mp I_nonempty
+    rw [I_is_Ioo] at t_in_I x_abs_lt
+    obtain ⟨i₀_lt_t, t_lt_i₁⟩ := Set.mem_Ioo.mp t_in_I
+    have i₀_lt_i₁ : i₀ < i₁ := Std.lt_trans i₀_lt_t t_lt_i₁
+    have x_abs_lt : |x| < 1 / 2 * (i₁ - i₀) := by
       rw [Real.volume_Ioo, toReal_ofReal (by positivity)] at x_abs_lt
       exact x_abs_lt
-    let J := Icc a b
-    have : ENNReal.ofReal (b - a + |x|) ≤ 3 / 2 * volume c := calc
-          ENNReal.ofReal (b - a + |x|)
-      _ ≤ ENNReal.ofReal (b - a + 1 / 2 * (b - a)) := by grw [x_abs_lt]
-      _ = ENNReal.ofReal (3 / 2 * (b - a)) := by ring_nf
-      _ = ENNReal.ofReal (3 / 2) * ENNReal.ofReal (b - a) := ENNReal.ofReal_mul (by positivity)
-      _ = ENNReal.ofReal 3 / (ENNReal.ofReal 2) * ENNReal.ofReal (b - a) := by
-        rw [ENNReal.ofReal_div_of_pos (by positivity)]
-      _ = 3 / 2 * ENNReal.ofReal (b - a) := by rw [ofReal_ofNat 3, ofReal_ofNat 2]
-      _ = 3 / 2 * volume c := by rw [c_is_Ioo, Real.volume_Ioo]
-    have : volume ({x} + c ∪ c) ≤ 3 / 2 * volume c := by
-      grw [union_comm, ← this]
-      apply volume_union_add_self_le_of_subset_Icc
-      · exact Std.le_of_lt a_lt_b
-      · rw [c_is_Ioo]
-        exact Ioo_subset_Icc_self
-    exact this
-
-  have vol_outer_finite : volume (({x} + c) ∪ c) < ⊤ := by
+    have I_add_x_lt_c_mul_I : ENNReal.ofReal (i₁ - i₀ + |x|) ≤ 3 / 2 * volume I := calc
+          ENNReal.ofReal (i₁ - i₀ + |x|)
+      _ ≤ ENNReal.ofReal (i₁ - i₀ + 1 / 2 * (i₁ - i₀))      := by grw [x_abs_lt]
+      _ = ENNReal.ofReal (3 / 2 * (i₁ - i₀))                := by ring_nf
+      _ = ENNReal.ofReal (3 / 2) * ENNReal.ofReal (i₁ - i₀) := ENNReal.ofReal_mul (by positivity)
+      _ = 3 / 2 * ENNReal.ofReal (i₁ - i₀)                  := by
+        rw [ofReal_div_of_pos (by positivity)]
+        repeat rw [ofReal_ofNat]
+      _ = 3 / 2 * volume I                                  := by rw [I_is_Ioo, Real.volume_Ioo]
+    grw [union_comm, ← I_add_x_lt_c_mul_I]
+    apply volume_union_add_self_le_of_subset_Icc (Std.le_of_lt i₀_lt_i₁)
+    simpa only [I_is_Ioo] using Ioo_subset_Icc_self
+  have vol_outer_finite : volume (({x} + I) ∪ I) < ⊤ := by
     grw [MeasureTheory.measure_union_le, ENNReal.add_lt_top]
-    rw [volume_singleton_add x c_mble]
+    rw [volume_singleton_add x I_mble]
     constructor <;> finiteness
-
-  have inner₁ : A ∩ c ⊆ ({x} + c) ∪ c := by
-    have : A ∩ c ⊆ c := by exact inter_subset_right
-    exact subset_union_of_subset_right this ({x} + c)
-
-  have inner₂ : {x} + (A ∩ c) ⊆ ({x} + c) ∪ c := by
-    have : {x} + (A ∩ c) ⊆ {x} + c := by
-      apply add_subset_add
-      · trivial
-      · exact inter_subset_right
-    exact subset_union_of_subset_left this c
-
-  have vol_inner₁ : 3 / 4 * volume c < volume (A ∩ c) := by
-    have aux : (3 / 4 * volume c).toReal < (volume (A ∩ c)).toReal := by
-      have c_lt_const_mul_A_inter_c_toReal :
-          (volume c).toReal < (4 / 3 * volume (A ∩ c)).toReal := (ENNReal.toReal_lt_toReal
-            (LT.lt.ne_top c_lt_top)
-            (ENNReal.mul_ne_top c₁_ne_top (measure_inter_ne_top_of_left_ne_top A_ne_top))).mpr
-              c_lt_const_mul_A_inter_c
+  have vol_inner₁ : 3 / 4 * volume I < volume (A ∩ I) := by
+    have aux : (3 / 4 * volume I).toReal < (volume (A ∩ I)).toReal := by
+      have I_lt_const_mul_A_inter_I_toReal :
+          (volume I).toReal < (ENNReal.ofReal (4 / 3) * volume (A ∩ I)).toReal :=
+        (ENNReal.toReal_lt_toReal
+          (LT.lt.ne_top I_lt_top)
+          (ENNReal.mul_ne_top ofReal_ne_top
+            (measure_inter_ne_top_of_left_ne_top (LT.lt.ne_top A_lt_top)))).mpr
+              I_lt_r_mul_A_inter_I
       simp only [ENNReal.toReal_mul, ENNReal.toReal_div, ENNReal.toReal_ofNat]
-      simp only [ENNReal.toReal_mul, ENNReal.toReal_div, ENNReal.toReal_ofNat]
-        at c_lt_const_mul_A_inter_c_toReal
+      simp only [ENNReal.toReal_mul,
+                 show (ENNReal.ofReal (4 / 3)).toReal = 4 / 3 from toReal_ofReal (by norm_num)]
+        at I_lt_const_mul_A_inter_I_toReal
       linarith
-    have h₁ : 3 / 4 * volume c ≠ ⊤ := ENNReal.mul_ne_top c₂_ne_top (LT.lt.ne_top c_lt_top)
-    have h₂ : volume (A ∩ c) ≠ ⊤ := measure_inter_ne_top_of_left_ne_top A_ne_top
+    have h₁ : 3 / 4 * volume I ≠ ⊤ := ENNReal.mul_ne_top r_ne_top (LT.lt.ne_top I_lt_top)
+    have h₂ : volume (A ∩ I) ≠ ⊤ := measure_inter_ne_top_of_left_ne_top (LT.lt.ne_top A_lt_top)
     exact (ENNReal.toReal_lt_toReal h₁ h₂).mp aux
-
-  have vol_inner₂ : 3 / 4 * volume c < volume ({x} + (A ∩ c)) := by
-    rw [volume_singleton_add x (MeasurableSet.inter A_mble c_mble)]
+  have vol_inner₂ : 3 / 4 * volume I < volume ({x} + (A ∩ I)) := by
+    rw [volume_singleton_add x (MeasurableSet.inter A_mble I_mble)]
     exact vol_inner₁
-
-  have : ∃ a : ℝ, a ∈ (A ∩ c) ∩ ({x} + (A ∩ c)) := by
-    apply MeasureTheory.nonempty_inter_of_measure_lt_add (μ := volume) (u := ({x} + c) ∪ c)
-    · exact (measurable_iff_measurable_singleton_add x (A ∩ c)).mp
-              (MeasurableSet.inter A_mble c_mble)
-    · assumption
-    · assumption
-    · grw [vol_outer]
-      have t := ENNReal.add_lt_add vol_inner₁ vol_inner₂
-      have ennreal_eq : (3 : ℝ≥0∞) / 4 * 2 = 3 / 2 := calc
-        (3 : ENNReal) / 4 * 2
-        _ = ENNReal.ofReal ((3 : ℝ≥0∞) / 4 * 2).toReal := (ENNReal.ofReal_toReal c₃_ne_top).symm
-        _ = ENNReal.ofReal ((3 : ℝ) / 4 * 2) := by simp only [toReal_mul, toReal_div, toReal_ofNat]
-        _ = ENNReal.ofReal ((3 : ℝ) / 2) := by norm_num
-        _ = ENNReal.ofReal ((3 : ℝ≥0∞) / 2).toReal := by simp [toReal_div, toReal_ofNat]
-        _ = (3 : ENNReal) / 2 := ENNReal.ofReal_toReal c₄_ne_top
-      rwa [← left_distrib, ← two_mul, ← mul_assoc, ennreal_eq] at t
+  have : ∃ a : ℝ, a ∈ (A ∩ I) ∩ ({x} + (A ∩ I)) := by
+    apply MeasureTheory.nonempty_inter_of_measure_lt_add volume
+      ((measurable_iff_measurable_singleton_add x (A ∩ I)).mp (MeasurableSet.inter A_mble I_mble))
+      (subset_union_of_subset_right inter_subset_right ({x} + I))
+      (subset_union_of_subset_left (add_subset_add (fun x ↦ id) inter_subset_right) I)
+    grw [vol_outer]
+    have t := ENNReal.add_lt_add vol_inner₁ vol_inner₂
+    have c₁_ne_top : (3 / 4 * 2 : ℝ≥0∞) ≠ ⊤ :=
+      mul_ne_top r_ne_top (Ne.symm top_ne_ofNat)
+    have c₂_ne_top : (3 / 2 : ℝ≥0∞) ≠ ⊤ :=
+      div_ne_top (Ne.symm top_ne_ofNat) (Ne.symm (NeZero.ne' 2))
+    have ennreal_eq : (3 : ℝ≥0∞) / 4 * 2 = 3 / 2 := calc
+          (3 : ENNReal) / 4 * 2
+      _ = ENNReal.ofReal ((3 : ℝ≥0∞) / 4 * 2).toReal := (ENNReal.ofReal_toReal c₁_ne_top).symm
+      _ = ENNReal.ofReal ((3 : ℝ) / 4 * 2)           := by
+        simp only [toReal_mul, toReal_div, toReal_ofNat]
+      _ = ENNReal.ofReal ((3 : ℝ) / 2)               := by norm_num
+      _ = ENNReal.ofReal ((3 : ℝ≥0∞) / 2).toReal     := by simp [toReal_div, toReal_ofNat]
+      _ = (3 : ENNReal) / 2                          := ENNReal.ofReal_toReal c₂_ne_top
+    rwa [← left_distrib, ← two_mul, ← mul_assoc, ennreal_eq] at t
   obtain ⟨a, a_in_A, a_in_x_plus_A⟩ := this
-
-  rcases a_in_x_plus_A with ⟨x', ⟨x'_in_x, ⟨a', ⟨a'_mem, a'_sum⟩⟩⟩⟩
+  obtain ⟨x', ⟨x'_in_x, ⟨a', ⟨a'_mem, a'_sum⟩⟩⟩⟩ := a_in_x_plus_A
   have x'_eq_x : x' = x := by trivial
-  beta_reduce at a'_sum
-  have : x = a - a' := by simp [x'_eq_x, ← a'_sum]
-  rw [this]
+  rw [show x = a - a' by simp [x'_eq_x, ← a'_sum]]
   apply Set.sub_mem_sub
-  · exact mem_of_mem_inter_left a_in_A
-  · exact mem_of_mem_inter_left a'_mem
+  · exact A_subset_S a_in_A.left
+  · exact A_subset_S a'_mem.left
 
--- TODO: immediate via exists_Ioo_subset_diff_of_measure_pos,
--- should this just be moved after it?
-lemma exists_Ioo_subset_diff_self_of_measure_pos {A : Set ℝ}
-    (A_mble : MeasurableSet A) (A_pos : 0 < volume A) :
-    ∃ δ > 0, Ioo (-δ) δ ⊆ A - A := by
-  obtain ⟨B, B_mble, B_subset_A, B_pos, B_lt_top⟩ :=
-    Measure.exists_subset_measure_lt_top A_mble A_pos
-  obtain ⟨δ, δ_pos, Ioo_subset_diff_self_B⟩ :=
-    exists_Ioo_subset_diff_self_of_measure_pos_lt_top B_mble B_pos B_lt_top
-  use δ; constructor; exact δ_pos
-  exact Subset.trans Ioo_subset_diff_self_B (sub_subset_sub B_subset_A B_subset_A)
-
-open TopologicalSpace ENNReal in
+open ENNReal in
 lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     (A_mble : MeasurableSet A) (A_pos : 0 < volume A)
     (B_mble : MeasurableSet B) (B_pos : 0 < volume B) :
