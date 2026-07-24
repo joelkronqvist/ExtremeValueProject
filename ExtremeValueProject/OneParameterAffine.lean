@@ -176,7 +176,7 @@ lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_isFinite
 lemma exists_interval_measure_inter_gt_mul_measure
     {A : Set ℝ} (A_mble : MeasurableSet A) (A_pos : 0 < volume A) (A_fin : volume A < ⊤)
     {r : ℝ} (one_lt_r : 1 < r) :
-    ∃ (J : Set ℝ), IsConnected J ∧ (interior J).Nonempty ∧
+    ∃ (J : Set ℝ), IsConnected J ∧ IsOpen J ∧ J.Nonempty ∧
                    volume J < (ENNReal.ofReal r) * volume (A ∩ J) := by
   let er := ENNReal.ofReal r
   have A_ne_top : volume A ≠ ⊤ := LT.lt.ne_top A_fin
@@ -243,8 +243,9 @@ lemma exists_interval_measure_inter_gt_mul_measure
     (IsOpen.measure_pos_iff (μ := volume) c_open).mp
       ((ENNReal.toReal_lt_toReal ENNReal.zero_ne_top (LT.lt.ne_top c_lt_r_mul_A_inter_c)).mp
         c_pos)
-  refine ⟨c, ?_, ?_, ?_⟩
+  refine ⟨c, ?_, ?_, ?_, ?_⟩
   · rwa [c_is_comp, isConnected_connectedComponentIn_iff]
+  · exact isOpen_mk.mpr c_open
   · simpa [IsOpen.interior_eq c_open] using c_nonempty
   · exact c_lt_r_mul_A_inter_c
 
@@ -490,11 +491,9 @@ lemma exists_Ioo_subset_diff_self_of_measure_pos {S : Set ℝ}
     Measure.exists_subset_measure_lt_top S_mble S_pos
   have r_ne_top : (3 / 4 : ℝ≥0∞) ≠ ⊤ :=
     div_ne_top (Ne.symm ENNReal.top_ne_ofNat) (Ne.symm (NeZero.ne' 4))
-  obtain ⟨I, ⟨I_conn, I_nonempty, I_lt_r_mul_A_inter_I⟩⟩ :=
+  obtain ⟨I, ⟨I_conn, I_open, I_nonempty, I_lt_r_mul_A_inter_I⟩⟩ :=
     exists_interval_measure_inter_gt_mul_measure
       A_mble A_pos A_lt_top (show 1 < (4 : ℝ) / 3 by norm_num)
-  have I_open : IsOpen I := sorry
-  have I_nonempty : I.Nonempty := sorry -- obvious, the interior is nonempty
   obtain ⟨i₀, i₁, I_is_Ioo⟩ : ∃ i₀ i₁ : ℝ, I = Ioo i₀ i₁ :=
       eq_Ioo_of_isOpen_of_isConnected_of_isFinite
         I_open I_conn (lt_top_of_lt I_lt_r_mul_A_inter_I)
@@ -596,14 +595,12 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
     Measure.exists_subset_measure_lt_top A_mble A_pos
   obtain ⟨B', B'_mble, B'_subset_B, B'_pos, B'_lt_top⟩ :=
     Measure.exists_subset_measure_lt_top B_mble B_pos
-  obtain ⟨I, ⟨I_conn, I_nonempty, I_lt_r_mul_A'_inter_I⟩⟩ :=
+  obtain ⟨I, ⟨I_conn, I_open, I_nonempty, I_lt_r_mul_A'_inter_I⟩⟩ :=
     exists_interval_measure_inter_gt_mul_measure
       A'_mble A'_pos A'_lt_top (show 1 < (4 : ℝ) / 3 by norm_num)
-  obtain ⟨J, ⟨J_conn, J_nonempty, J_lt_r_mul_B'_inter_J⟩⟩ :=
+  obtain ⟨J, ⟨J_conn, J_open, J_nonempty, J_lt_r_mul_B'_inter_J⟩⟩ :=
     exists_interval_measure_inter_gt_mul_measure
       B'_mble B'_pos B'_lt_top (show 1 < (4 : ℝ) / 3 by norm_num)
-  have I_open : IsOpen I := sorry
-  have J_open : IsOpen J := sorry
   obtain ⟨i₀, i₁, I_is_Ioo⟩ : ∃ i₀ i₁ : ℝ, I = Ioo i₀ i₁ :=
       eq_Ioo_of_isOpen_of_isConnected_of_isFinite
         I_open I_conn (lt_top_of_lt I_lt_r_mul_A'_inter_I)
