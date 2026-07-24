@@ -168,8 +168,8 @@ lemma Real.eq_Ioo_or_Iio_or_Ioi_or_univ_of_isOpen_of_isConnected
     (∃ a b, U = Ioo a b) ∨ (∃ b, U = Iio b) ∨ (∃ a, U = Ioi a) ∨ U = univ := by
   sorry
 
-lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_isFinite
-    {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U) (U_fin : volume U < ⊤) :
+lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
+    {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U) (U_lt_top : volume U < ⊤) :
     ∃ a b : ℝ, U = Ioo a b := by
   sorry
 
@@ -206,7 +206,7 @@ lemma exists_interval_measure_inter_gt_mul_measure
     by_contra hc
     have hc : ∀ c ∈ comps, er * volume (A ∩ c) ≤ volume c := by simpa using hc
     have contradiction : er * volume A ≤ volume U := calc
-      er * volume A
+          er * volume A
       _ = er * volume (A ∩ U) := by rw [← left_eq_inter.mpr U_superset_A]
       _ = er * volume (A ∩ ⋃ (i : { c : Set ℝ // c ∈ comps }), i.val) := by rw [union_S_eq_U]
       _ = er * volume (⋃ (i : { c : Set ℝ // c ∈ comps }), A ∩ i.val) := by rw [inter_iUnion]
@@ -238,7 +238,7 @@ lemma exists_interval_measure_inter_gt_mul_measure
             volume c
         _ < er * volume (A ∩ c) := gt_iff_lt.mp c_lt_r_mul_A_inter_c
         _ ≤ er * volume A       := by grw [measure_mono inter_subset_left]
-        _ < ⊤                  := Ne.lt_top' (id (Ne.symm r_mul_A_ne_top))
+        _ < ⊤                   := Ne.lt_top' (id (Ne.symm r_mul_A_ne_top))
   have c_nonempty : c.Nonempty :=
     (IsOpen.measure_pos_iff (μ := volume) c_open).mp
       ((ENNReal.toReal_lt_toReal ENNReal.zero_ne_top (LT.lt.ne_top c_lt_r_mul_A_inter_c)).mp
@@ -303,13 +303,13 @@ lemma exists_subinterval_preserving_volume_property
         dsimp
         apply j₀_strict
         exact Nat.zero_lt_succ m
-      have divided_Ioo_eq_self_sdiff_singleton
+      have Ioo_union_Ioo_eq_Ioo_sdiff_singleton
           {α : Type} [LinearOrder α] {a b c : α} (a_le_b : a ≤ b) (b_lt_c : b < c) :
           Ioo a b ∪ Ioo b c = Ioo a c \ {b} := by
         simp [← Set.Ioc_union_Ioo_eq_Ioo a_le_b b_lt_c, union_sdiff_distrib]
       have : Ioo (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1))
            = Ioo (j₀ 0) (j₁ (m + 1)) \ {j₁ m} := by
-        apply divided_Ioo_eq_self_sdiff_singleton
+        apply Ioo_union_Ioo_eq_Ioo_sdiff_singleton
         · exact Std.le_of_lt j₀0_lt_j₁m
         · apply StrictMono.imp j₁_strict
           norm_num
@@ -641,7 +641,7 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
       d - c < b - a ∧ ENNReal.ofReal (1 / 2) * volume (Ioo a b) < volume (Ioo c d) := by
     unfold a b c d
     have hl : i₀ + (i₁ - i₀) * ((↑↑i + 1) / ↑q.den) - (i₀ + (i₁ - i₀) * (↑↑i / ↑q.den))
-            = (i₁ - i₀) / q.den := by ring    
+            = (i₁ - i₀) / q.den := by ring
     have hr : j₀ + (j₁ - j₀) * ((j + 1) / ↑q.num.toNat) - (j₀ + (j₁ - j₀) * (j / ↑q.num.toNat))
             = (j₁ - j₀) / q.num.toNat := by ring
     have q_revive : (q.num.toNat / q.den : ℝ) = (q : ℝ) := by
@@ -656,7 +656,7 @@ lemma exists_Ioo_subset_diff_of_measure_pos {A B : Set ℝ}
                q.num.toNat / (i₁ - i₀) * ((i₁ - i₀) / q.den)
            ↔ (j₁ - j₀) / ↑q.num.toNat < (i₁ - i₀) / q.den :=
         mul_lt_mul_iff_of_pos_left (by positivity)
-      
+
       have left_simplified : q.num.toNat / (i₁ - i₀) * ((j₁ - j₀) / q.num.toNat)
                            = (j₁ - j₀) / (i₁ - i₀) := by field
       have right_simplified : q.num.toNat / (i₁ - i₀) * ((i₁ - i₀) / q.den)
