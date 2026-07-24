@@ -249,14 +249,9 @@ lemma exists_interval_measure_inter_gt_mul_measure
   · exact c_lt_r_mul_A_inter_c
   
 lemma divided_Ioo_eq_self_sdiff_singleton
-    {α : Type*} [LinearOrder α] {a b c : α} (hab : a < b) (hbc : b < c) :
+    {α : Type*} [LinearOrder α] {a b c : α} (a_le_b : a ≤ b) (b_lt_c : b < c) :
     Ioo a b ∪ Ioo b c = Ioo a c \ {b} := by
-  have bc_sub_b_eq_bc : Ioo b c \ {b} = Ioo b c := by
-    apply sdiff_singleton_eq_self
-    rw [Set.mem_Ioo, not_and_or]
-    exact Or.inl Std.lt_irrefl
-  rw [← Set.Ioc_union_Ioo_eq_Ioo (Std.le_of_lt hab) hbc,
-      union_sdiff_distrib, Ioc_sdiff_right, bc_sub_b_eq_bc]
+  simp [← Set.Ioc_union_Ioo_eq_Ioo a_le_b b_lt_c, union_sdiff_distrib]
 
 lemma exists_subinterval_preserving_volume_property
     {A : Set ℝ} {a b : ℝ} (a_le_b : a < b) {r : ENNReal}
@@ -295,11 +290,9 @@ lemma exists_subinterval_preserving_volume_property
   have Ji_sub_Ioo (i : Fin m) : (J i) ⊆ Ioo a b := by
     apply Set.Ioo_subset_Ioo
     · rw [← j₀0_eq_a]
-      apply j₀_strict.monotone
-      exact Nat.zero_le i
+      exact j₀_strict.monotone (Nat.zero_le i)
     · rw [← j₁_m_sub_one_eq_b]
-      apply j₁_strict.monotone
-      exact (Nat.le_sub_one_iff_lt m_pos).mpr (Fin.is_lt i)
+      exact j₁_strict.monotone ((Nat.le_sub_one_iff_lt m_pos).mpr (Fin.is_lt i))
   have interval_sdiff_subintervals_eq_endpoints (m : ℕ) :
       Ioo (j₀ 0) (j₁ m) \ ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)
       = ⋃ i : Fin m, {j₁ i} := by
@@ -309,20 +302,17 @@ lemma exists_subinterval_preserving_volume_property
       simp
       rw [Set.sdiff_eq_empty, Set.iUnion_const]
     | succ m ih =>
-      have : Ioo (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1))
-           = Ioo (j₀ 0) (j₁ (m + 1)) \ {j₁ m} := by
-        apply divided_Ioo_eq_self_sdiff_singleton
-        · rw [j₁_eq_j₀_comp_add_one]
-          dsimp
-          apply StrictMono.imp j₀_strict
-          exact Nat.zero_lt_succ m
-        · apply StrictMono.imp j₁_strict
-          norm_num
       have j₀0_lt_j₁m : j₀ 0 < j₁ m := by
         rw [j₁_eq_j₀_comp_add_one]
         dsimp
         apply j₀_strict
         exact Nat.zero_lt_succ m
+      have : Ioo (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1))
+           = Ioo (j₀ 0) (j₁ (m + 1)) \ {j₁ m} := by
+        apply divided_Ioo_eq_self_sdiff_singleton
+        · exact Std.le_of_lt j₀0_lt_j₁m
+        · apply StrictMono.imp j₁_strict
+          norm_num
       calc
             Ioo (j₀ 0) (j₁ (m + 1)) \ ⋃ i : Fin (m + 1 + 1), Ioo (j₀ i) (j₁ i)
         _ = (Ioc (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1)) ) \
