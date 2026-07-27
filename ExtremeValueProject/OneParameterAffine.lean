@@ -249,6 +249,11 @@ lemma exists_interval_measure_inter_gt_mul_measure
   · simpa [IsOpen.interior_eq c_open] using c_nonempty
   · exact c_lt_r_mul_A_inter_c
 
+lemma Ioo_union_Ioo_eq_Ioo_sdiff_singleton
+    {α : Type*} [LinearOrder α] {a b c : α} (a_le_b : a ≤ b) (b_lt_c : b < c) :
+    Ioo a b ∪ Ioo b c = Ioo a c \ {b} := by
+  simp [← Set.Ioc_union_Ioo_eq_Ioo a_le_b b_lt_c, union_sdiff_distrib]
+
 lemma exists_subinterval_preserving_volume_property
     {A : Set ℝ} {a b : ℝ} (a_le_b : a < b) {r : ENNReal}
     (h : volume (Ioo a b) < r * volume (A ∩ Ioo a b))
@@ -303,10 +308,6 @@ lemma exists_subinterval_preserving_volume_property
         dsimp
         apply j₀_strict
         exact Nat.zero_lt_succ m
-      have Ioo_union_Ioo_eq_Ioo_sdiff_singleton
-          {α : Type} [LinearOrder α] {a b c : α} (a_le_b : a ≤ b) (b_lt_c : b < c) :
-          Ioo a b ∪ Ioo b c = Ioo a c \ {b} := by
-        simp [← Set.Ioc_union_Ioo_eq_Ioo a_le_b b_lt_c, union_sdiff_distrib]
       have : Ioo (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1))
            = Ioo (j₀ 0) (j₁ (m + 1)) \ {j₁ m} := by
         apply Ioo_union_Ioo_eq_Ioo_sdiff_singleton
@@ -495,7 +496,7 @@ lemma exists_Ioo_subset_diff_self_of_measure_pos {S : Set ℝ}
     exists_interval_measure_inter_gt_mul_measure
       A_mble A_pos A_lt_top (show 1 < (4 : ℝ) / 3 by norm_num)
   obtain ⟨i₀, i₁, I_is_Ioo⟩ : ∃ i₀ i₁ : ℝ, I = Ioo i₀ i₁ :=
-      eq_Ioo_of_isOpen_of_isConnected_of_isFinite
+      eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
         I_open I_conn (lt_top_of_lt I_lt_r_mul_A_inter_I)
   have i₀_lt_i₁ : i₀ < i₁ := by
     obtain ⟨x, x_in_I⟩ := IsConnected.nonempty I_conn
