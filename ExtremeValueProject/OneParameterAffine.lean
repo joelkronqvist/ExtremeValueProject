@@ -174,6 +174,190 @@ lemma exists_interval_measure_inter_gt_mul_measure
     ∃ (J : Set ℝ), IsConnected J ∧ (interior A).Nonempty ∧ volume (J ∩ A) > r * volume J := by
   sorry
 
+lemma Ioo_union_Ioo_eq_Ioo_sdiff_singleton
+    {α : Type*} [LinearOrder α] {a b c : α} (a_le_b : a ≤ b) (b_le_c : b ≤ c) :
+    Ioo a b ∪ Ioo b c = Ioo a c \ {b} := by
+  grind
+
+lemma exists_subinterval_preserving_volume_property
+    {A : Set ℝ} {a b : ℝ} (a_le_b : a < b) {r : ENNReal}
+    (h : r * volume (Ioo a b) < volume (A ∩ Ioo a b))
+    {m : ℕ} (m_pos : 0 < m) :
+    ∃ i : Fin m,
+      r * volume (Ioo (a + (b - a) * (i / m)) (a + (b - a) * ((i + 1) / m))) <
+     volume (A ∩ (Ioo (a + (b - a) * (i / m)) (a + (b - a) * ((i + 1) / m)))) := by
+  let j₀ (i : ℕ) := a + (b - a) * (i / m)
+  let j₁ (i : ℕ) := a + (b - a) * ((i + 1) / m)
+  have j₁_eq_j₀_comp_add_one : j₁ = j₀ ∘ (· + 1) := by
+    ext i
+    unfold j₁
+    exact_mod_cast rfl
+  have j₀_strict : StrictMono j₀ := by
+    intro i j i_lt_j
+    unfold j₀
+    apply add_lt_add_right
+    apply (mul_lt_mul_iff_right₀ (show 0 < b - a by positivity)).mpr
+    apply (div_lt_div_iff_of_pos_right (by exact_mod_cast m_pos)).mpr
+    exact_mod_cast i_lt_j
+  have j₁_strict : StrictMono j₁ := by
+    rw [j₁_eq_j₀_comp_add_one]
+    exact StrictMono.comp j₀_strict add_left_strictMono
+  let J (i : ℕ) := Ioo (j₀ i) (j₁ i)
+  have j₀0_eq_a : j₀ 0 = a := by field
+  have j₁_m_sub_one_eq_b : j₁ (m - 1) = b := by
+    unfold j₁
+    show a + (b - a) * ((((m - 1 : ℕ) : ℝ) + 1) / m) = b
+    have m_ne_zero : m ≠ 0 := by exact Nat.ne_zero_of_lt m_pos
+    have : (((m - 1 : ℕ) : ℝ) + 1) / m = 1 := by
+      norm_num [Nat.cast_sub m_pos]
+      exact m_ne_zero
+    rw [this]
+    field
+  have Ji_sub_Ioo (i : Fin m) : (J i) ⊆ Ioo a b := by
+    apply Set.Ioo_subset_Ioo
+    · rw [← j₀0_eq_a]
+      exact j₀_strict.monotone (Nat.zero_le i)
+    · rw [← j₁_m_sub_one_eq_b]
+      exact j₁_strict.monotone ((Nat.le_sub_one_iff_lt m_pos).mpr (Fin.is_lt i))
+  have interval_sdiff_subintervals_eq_endpoints (m : ℕ) :
+      Ioo (j₀ 0) (j₁ m) \ ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)
+      = ⋃ i : Fin m, {j₁ i} := by
+    induction m with
+    | zero =>
+      unfold j₀ j₁
+      simp
+      rw [Set.sdiff_eq_empty, Set.iUnion_const]
+    | succ m ih =>
+      have j₀0_lt_j₁m : j₀ 0 < j₁ m := by
+        rw [j₁_eq_j₀_comp_add_one]
+        dsimp
+        apply j₀_strict
+        exact Nat.zero_lt_succ m
+      have : Ioo (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1))
+           = Ioo (j₀ 0) (j₁ (m + 1)) \ {j₁ m} := by
+        apply Ioo_union_Ioo_eq_Ioo_sdiff_singleton
+        · exact Std.le_of_lt j₀0_lt_j₁m
+        · apply Monotone.imp j₁_strict.monotone
+          norm_num
+      calc
+            Ioo (j₀ 0) (j₁ (m + 1)) \ ⋃ i : Fin (m + 1 + 1), Ioo (j₀ i) (j₁ i)
+        _ = (Ioc (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1)) ) \
+              ⋃ i : Fin (m + 1 + 1), Ioo (j₀ i) (j₁ i) := by
+          rw [← Ioc_union_Ioo_eq_Ioo (Std.le_of_lt j₀0_lt_j₁m) (j₁_strict (lt_add_one m))]
+        _ = (Ioc (j₀ 0) (j₁ m) ∪ Ioo (j₁ m) (j₁ (m + 1)) ) \
+              (Ioo (j₁ m) (j₁ (m + 1)) ∪ ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)) := by
+          suffices ⋃ i : Fin (m + 1 + 1), Ioo (j₀ ↑i) (j₁ ↑i)
+                   = Ioo (j₁ m) (j₁ (m + 1)) ∪ ⋃ i : Fin (m + 1), Ioo (j₀ ↑i) (j₁ ↑i)
+            by rw [this]
+          rw [Set.iUnion_fin_add_one_eq_iUnion_castSucc]
+          show (⋃ i : Fin (m + 1), Ioo (j₀ i.castSucc) (j₁ i.castSucc))
+                 ∪ Ioo (j₀ (Fin.last (m + 1))) (j₁ (Fin.last (m + 1)))
+               = Ioo (j₁ m) (j₁ (m + 1)) ∪ ⋃ i : Fin (m + 1), Ioo (j₀ ↑i) (j₁ ↑i)
+          have h₁ : Ioo (j₀ (Fin.last (m + 1))) (j₁ (Fin.last (m + 1)))
+                    = Ioo (j₁ m) (j₁ (m + 1)) := by
+            rw [Fin.val_last, j₁_eq_j₀_comp_add_one]
+            dsimp
+          have h₂ : (⋃ i : Fin (m + 1), Ioo (j₀ i.castSucc) (j₁ i.castSucc))
+                    = ⋃ i : Fin (m + 1), Ioo (j₀ ↑i) (j₁ ↑i) := by
+            exact iUnion_congr (congrFun rfl)
+          rw [union_comm, h₁, h₂]
+        _ = (Ioc (j₀ 0) (j₁ m)) \ ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i) := by
+          rw [union_sdiff_distrib]
+          have : (Ioo (j₁ m) (j₁ (m + 1))
+                   \ (Ioo (j₁ m) (j₁ (m + 1)) ∪ ⋃ i : Fin (m + 1), Ioo (j₀ ↑i) (j₁ ↑i))) = ∅ := by
+            rw [Set.sdiff_eq_empty]
+            exact subset_union_left
+          rw [this, union_empty]
+          have : Ioc (j₀ 0) (j₁ m) ∩ Ioo (j₁ m) (j₁ (m + 1)) ⊆ ∅ := by
+            intro x hx
+            obtain ⟨x_in_Ioc, x_in_Ioo⟩ := hx
+            rw [Set.mem_Ioc] at x_in_Ioc
+            rw [Set.mem_Ioo] at x_in_Ioo
+            linarith
+          have : Disjoint (Ioc (j₀ 0) (j₁ m)) (Ioo (j₁ m) (j₁ (m + 1))) := by
+            apply Set.disjoint_iff_inter_eq_empty.mpr
+            ext x; constructor <;> intro hx
+            · exact this hx
+            · exact not_notMem.mp fun a => hx
+          rw [← Set.sdiff_sdiff, sdiff_eq_left.mpr this]
+        _ = ((Ioo (j₀ 0) (j₁ m) ∪ {j₁ m}) \
+              ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)) := by
+          suffices Ioc (j₀ 0) (j₁ m) = Ioo (j₀ 0) (j₁ m) ∪ {j₁ m} by rw [this]
+          exact (Set.Ioo_union_right j₀0_lt_j₁m).symm
+        _ = ((Ioo (j₀ 0) (j₁ m)) \
+              ⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)) ∪ {j₁ m} := by
+          suffices j₁m_disj : Disjoint {j₁ m} (⋃ i : Fin (m + 1), Ioo (j₀ i) (j₁ i)) by
+            rw [Set.union_sdiff_distrib, sdiff_eq_left.mpr j₁m_disj]
+          apply Set.disjoint_iff_inter_eq_empty.mpr
+          apply Set.eq_empty_of_subset_empty
+          intro x hx
+          obtain ⟨x_in_j₁m, x_in_iUnion⟩ := hx
+          have : x < j₁ m := by
+            obtain ⟨i, x_in_Ioo⟩ := Set.mem_iUnion.mp x_in_iUnion
+            rw [Set.mem_Ioo] at x_in_Ioo
+            suffices ji_le_jm : j₁ i ≤ j₁ m from Std.lt_of_lt_of_le x_in_Ioo.right ji_le_jm
+            apply j₁_strict.monotone
+            exact Fin.is_le i
+          have : x = j₁ m := by
+            exact ext_cauchy (congrArg cauchy x_in_j₁m)
+          linarith
+        _ = (⋃ i : Fin m, {j₁ i}) ∪ {j₁ m} := by rw [ih]
+        _ = ⋃ i : Fin (m + 1), {j₁ i} := by
+          rw [Set.iUnion_fin_add_one_eq_iUnion_castSucc]
+          show (⋃ i : Fin m, {j₁ i}) ∪ {j₁ m}
+               = (⋃ i : Fin m, {j₁ i.castSucc}) ∪ {j₁ (Fin.last m)}
+          have hl : ⋃ i : Fin m, {j₁ i} = (⋃ i : Fin m, {j₁ i.castSucc}) := by
+            exact iUnion_congr (congrFun rfl)
+          have hr : ({j₁ m} : Set ℝ) = {j₁ (Fin.last (m))} := by
+            rw [Fin.val_last]
+          rw [hl, hr]
+  have J_disj : Pairwise (Function.onFun Disjoint fun i : Fin m ↦ J i) := by
+    intro i j i_ne_j
+    unfold Function.onFun
+    rw [Set.Ioo_disjoint_Ioo]
+    rw [← Monotone.map_min j₁_strict.monotone]
+    rw [← Monotone.map_max j₀_strict.monotone]
+    have : (min i j : ℕ) + 1 ≤ max i j := by
+      have : (min i j : ℕ) < max i j := by
+        exact_mod_cast inf_lt_sup.mpr i_ne_j
+      exact Order.add_one_le_iff.mpr this
+    show j₁ (min i j) ≤ j₀ (max i j)
+    unfold j₁
+    exact_mod_cast Monotone.imp j₀_strict.monotone this
+  have interval_eq_subintervals : volume (A ∩ ⋃ (i : Fin m), J i) = volume (A ∩ Ioo a b) := by
+    apply MeasureTheory.measure_eq_measure_of_null_sdiff
+    · apply Set.inter_subset_inter_right
+      exact iUnion_subset Ji_sub_Ioo
+    · suffices no_A : volume (Ioo a b \ (⋃ i : Fin m, J i)) = 0 by
+        have subs : (A ∩ Ioo a b) \ (A ∩ ⋃ i : Fin m, J i) ⊆ Ioo a b \ (⋃ i : Fin m, J i) := by
+          rw [← Set.inter_sdiff_distrib_left]
+          exact inter_subset_right
+        exact Measure.mono_null subs no_A
+      have Ioo_sdiff_subs_eq_points : Ioo a b \ ⋃ i : Fin m, J i = ⋃ i : Fin (m - 1), {j₁ i} := by
+        have aux := interval_sdiff_subintervals_eq_endpoints (m - 1)
+        rw [j₀0_eq_a, j₁_m_sub_one_eq_b, Nat.sub_one_add_one (by positivity)] at aux
+        exact aux
+      rw [Ioo_sdiff_subs_eq_points]
+      rw [measure_null_iff_singleton]
+      · exact fun x a ↦ volume_singleton
+      · apply Set.countable_iUnion
+        exact (fun i ↦ countable_singleton (j₁ ↑i))
+  by_contra hc
+  change ¬∃ i : Fin m, r * volume (J i) < volume (A ∩ J i) at hc
+  rw [not_exists] at hc
+  have contradiction : volume (A ∩ Ioo a b) ≤ r * volume (Ioo a b) := calc
+        volume (A ∩ Ioo a b)
+    _ = volume (A ∩ ⋃ (i : Fin m), J i) := by rw [interval_eq_subintervals]
+    _ = volume (⋃ (i : Fin m), A ∩ J i) := by rw [Set.inter_iUnion]
+    _ ≤ ∑ i : Fin m, volume (A ∩ J i)   := by grw [MeasureTheory.measure_iUnion_fintype_le]
+    _ ≤ ∑ i : Fin m, r * volume (J i)   := Finset.sum_le_sum fun i hi ↦ le_of_not_gt (hc i)
+    _ ≤ r * ∑ i : Fin m, volume (J i)   := by rw [Finset.mul_sum]
+    _ ≤ r * ∑' i : Fin m, volume (J i)  := by grw [ENNReal.sum_le_tsum Finset.univ]
+    _ = r * volume (⋃ i : Fin m, J i)   := by rw [MeasureTheory.measure_iUnion J_disj (by aesop)]
+    _ ≤ r * volume (Ioo a b)            := by
+      grw [MeasureTheory.measure_mono (iUnion_subset Ji_sub_Ioo)]
+  exact (Std.not_lt.mpr contradiction) h
+
 lemma isPreconnected_of_Ioo_subset_of_subset_Icc
     {J : Set ℝ} {a b : ℝ} (J_ge : Ioo a b ⊆ J) (J_le : J ⊆ Icc a b) :
     IsPreconnected J := by
