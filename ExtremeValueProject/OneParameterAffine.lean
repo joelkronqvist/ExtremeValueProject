@@ -281,6 +281,99 @@ lemma eq_const_mul_of_additive_of_measurable {f : ℝ → ℝ}
   ext x
   exact linear_of_additive_of_measurable f_add f_mble x
 
+open Module in
+lemma not_linear_of_additive :
+    ∃ f : ℝ → ℝ, (∀ s₁ s₂ : ℝ, f (s₁ + s₂) = f s₁ + f s₂) ∧ ¬∃ α : ℝ, f = (α * ·) := by
+  let ι := (Basis.ofVectorSpaceIndex ℚ ℝ : Type _)  
+  have b := Basis.ofVectorSpace ℚ ℝ
+  change Basis ι ℚ ℝ at b
+  obtain ⟨i₀, i₁, i₂, hi₀₁, hi₀₂⟩ :
+      ∃ i₀ i₁ i₂ : (Basis.ofVectorSpaceIndex ℚ ℝ), b i₁ ≠ b i₀ ∧ b i₂ ≠ b i₀ := by
+    -- Real.rank_rat_real
+    -- VectorSpace.card_fintype
+    -- is rank_eq_mk_of_infinite_lt applicable?
+    sorry
+  let k (e : ℝ) : ℝ := if e = b i₀ then 1 else 0
+  have : k (b i₀) = 1 := by unfold k; simp
+  have : k (b i₁) = 0 := by unfold k; simp [hi₀₁]
+  have : k (b i₂) = 0 := by unfold k; simp [hi₀₂]
+  have t₇ (x : ℝ) := Basis.linearCombination_repr b x
+  have t₈ (x : ℝ) : ((b.repr x).sum fun i q ↦ q • b i) = x := by
+    simpa [Finsupp.linearCombination_apply ℚ] using t₇ x
+  have t₉ (x : ℝ) : ∃ s : Finset ι, ∑ i ∈ s, (b.repr x) i • b i = x :=
+    ⟨(b.repr x).support, b.linearCombination_repr x⟩
+  let k' (x : ℝ) := (b.repr x).sum fun i q ↦ q • k (b i)
+  have k'_apply (x : ℝ) : ∃ s : Finset ι, k' x = ∑ i ∈ s, (b.repr x) i • k (b i) := by
+    obtain ⟨s, hs⟩ : ∃ s : Finset ι, (b.repr x).support ⊆ s :=
+      ⟨(b.repr x).support, fun i hi => hi⟩
+    use s
+    have t : k' x = (b.repr x).sum fun i q ↦ q • k (b i) := rfl
+    rw [Finsupp.sum_of_support_subset (b.repr x)] at t
+    · exact t
+    · exact hs
+    · exact fun i hi ↦ zero_smul ℚ (k (b i))
+  use k'
+  constructor
+  · intro x₁ x₂
+    have : ∃ s : Finset ι,
+             k' x₁ = ∑ i ∈ s, (b.repr x₁) i • k (b i) ∧
+             k' x₂ = ∑ i ∈ s, (b.repr x₂) i • k (b i) ∧
+             k' (x₁ + x₂) = ∑ i ∈ s, (b.repr (x₁ + x₂)) i • k (b i) := by
+      obtain ⟨s₁, hs₁⟩ : ∃ s : Finset ι, (b.repr x₁).support ⊆ s :=
+        ⟨(b.repr x₁).support, fun i hi => hi⟩
+      obtain ⟨s₂, hs₂⟩ : ∃ s : Finset ι, (b.repr x₂).support ⊆ s :=
+        ⟨(b.repr x₂).support, fun i hi => hi⟩
+      obtain ⟨s₃, hs₃⟩ : ∃ s : Finset ι, (b.repr (x₁ + x₂)).support ⊆ s :=
+        ⟨(b.repr (x₁ + x₂)).support, fun i hi => hi⟩        
+      use s₁ ∪ s₂ ∪ s₃
+      refine ⟨?_, ?_, ?_⟩
+      · have t : k' x₁ = (b.repr x₁).sum fun i q ↦ q • k (b i) := rfl
+        rw [Finsupp.sum_of_support_subset (b.repr x₁)] at t
+        · exact t
+        · have : (b.repr x₁).support ⊆ s₁ ∪ s₂ := by
+            exact_mod_cast subset_union_of_subset_left hs₁ s₂
+          exact_mod_cast subset_union_of_subset_left this s₃
+        · exact fun i hi ↦ zero_smul ℚ (k (b i))
+      · have t : k' x₂ = (b.repr x₂).sum fun i q ↦ q • k (b i) := rfl
+        rw [Finsupp.sum_of_support_subset (b.repr x₂)] at t
+        · exact t
+        · have : (b.repr x₂).support ⊆ s₁ ∪ s₂ := by
+            exact_mod_cast subset_union_of_subset_right hs₂ s₁ 
+          exact_mod_cast subset_union_of_subset_left this s₃
+        · exact fun i hi ↦ zero_smul ℚ (k (b i))
+      · have t : k' (x₁ + x₂) = (b.repr (x₁ + x₂)).sum fun i q ↦ q • k (b i) := rfl
+        rw [Finsupp.sum_of_support_subset (b.repr (x₁ + x₂))] at t
+        · exact t
+        · exact_mod_cast subset_union_of_subset_right hs₃ (s₁ ∪ s₂)
+        · exact fun i hi ↦ zero_smul ℚ (k (b i))
+    obtain ⟨s, h₁, h₂, h₃⟩ := this
+    calc
+      k' (x₁ + x₂)
+      _ = ∑ i ∈ s, (b.repr (x₁ + x₂)) i • k (b i) := h₃
+      _ = ∑ i ∈ s, (b.repr x₁ i + b.repr x₂ i) • k (b i) := by aesop
+      _ = ∑ i ∈ s, (b.repr x₁ i • k (b i) + b.repr x₂ i • k (b i)) := by
+        have t (i : ι) : (b.repr x₁ i + b.repr x₂ i) • k (b i) = (b.repr x₁ i • k (b i) + b.repr x₂ i • k (b i)) := by
+          rw [add_smul (b.repr x₁ i) (b.repr x₂ i) (k (b i))]        
+        grind -- rw not working?
+      _ = ∑ i ∈ s, b.repr x₁ i • k (b i) + ∑ i ∈ s, b.repr x₂ i • k (b i) := by
+        rw [Finset.sum_add_distrib]
+      _ = k' x₁ + k' x₂ := by rw [h₁, h₂]
+  · by_contra hc
+    obtain ⟨α, k_linear⟩ := hc
+    --have : Monotone k' := by
+    --  intro a b hab
+    --  sorry --some simp or linarith
+    have : k' (b i₀) = 1 := sorry
+    have : k' (b i₁) = 0 := sorry
+    have : k' (b i₂) = 0 := sorry
+    rw [k_linear] at *
+    dsimp at *
+    -- this is easy
+    -- I think the most idiomatic argument considers the injectivity of k' (by linearity)
+    -- and finds it got the same value in two different places if α is nonzero.
+    -- if α = 0, then we have a contradiction with α * b i₀ = 1.
+    sorry
+    
 /-- A measurable multiplicative map ℝ → (0,+∞) is of the form s ↦ exp(α * s) for some α ∈ ℝ.
 (The only measurable solutions to the multiplicative version of the Cauchy-Hamel functional
 equation are the obvious ones.) -/
