@@ -296,15 +296,29 @@ end Finset
 open Module in
 lemma not_linear_of_additive :
     ∃ f : ℝ → ℝ, (∀ s₁ s₂ : ℝ, f (s₁ + s₂) = f s₁ + f s₂) ∧ ¬∃ α : ℝ, f = (α * ·) := by
-  let ι := (Basis.ofVectorSpaceIndex ℚ ℝ : Type _)
+  let ι := Basis.ofVectorSpaceIndex ℚ ℝ
   have b := Basis.ofVectorSpace ℚ ℝ
   change Basis ι ℚ ℝ at b
   obtain ⟨i₀, i₁, i₂, hi₀₁, hi₀₂, i₁_ne_i₂⟩ :
       ∃ i₀ i₁ i₂ : (Basis.ofVectorSpaceIndex ℚ ℝ), b i₁ ≠ b i₀ ∧ b i₂ ≠ b i₀ ∧ i₁ ≠ i₂ := by
-    -- Real.rank_rat_real
-    -- VectorSpace.card_fintype
-    -- is rank_eq_mk_of_infinite_lt applicable?
-    sorry
+    have ι_infinite : Infinite ι := by
+      suffices ι_card_continuum : Cardinal.mk ι = Cardinal.continuum by
+        simpa [Cardinal.infinite_iff, ι_card_continuum] using Cardinal.aleph0_le_continuum
+      have rank_is_card_reals : Module.rank ℚ ℝ = Cardinal.mk ℝ := by
+        apply Free.rank_eq_mk_of_infinite_lt ℚ ℝ
+        aesop
+      have aux : Cardinal.lift.{0, 0} (Cardinal.mk ι) = Cardinal.lift.{0, 0} (Cardinal.mk ℝ) := by
+        simp_all only [Basis.mk_eq_rank b, rank_rat_real, Cardinal.lift_id]
+      simpa [← show Cardinal.mk ℝ = Cardinal.continuum by aesop] using aux
+    obtain ⟨i₀⟩ := Infinite.nonempty ι
+    obtain ⟨i₁, hi₁⟩ := Infinite.exists_notMem_finset {i₀}
+    obtain ⟨i₂, hi₂⟩ := Infinite.exists_notMem_finset ({i₀} ∪ {i₁})
+    have i₁_ne_i₀ : i₁ ≠ i₀ := by simpa using hi₁
+    obtain ⟨i₂_ne_i₀, i₂_ne_i₁⟩: i₂ ≠ i₀ ∧ i₂ ≠ i₁ := by simpa using hi₂
+    refine ⟨i₀, i₁, i₂, ?_, ?_, ?_⟩
+    · exact Function.Injective.ne (Basis.injective b) i₁_ne_i₀
+    · exact Function.Injective.ne (Basis.injective b) i₂_ne_i₀
+    · exact i₂_ne_i₁.symm
   let k (e : ℝ) : ℝ := if e = b i₀ then 1 else 0
   have k_apply (e : ℝ) : k e = if e = b i₀ then 1 else 0 := rfl
   have k_one_of_not_zero (i : ι) (h : k (b i) ≠ 0) : k (b i) = 1 := by
@@ -336,7 +350,7 @@ lemma not_linear_of_additive :
     have eq₂ := eq₂ s (Finset.subset_union_of_subset_left Finset.subset_union_right s₃)
     have eq₃ := eq₃ s Finset.subset_union_right
     calc
-      k' (x₁ + x₂)
+          k' (x₁ + x₂)
       _ = ∑ i ∈ s, (b.repr (x₁ + x₂)) i • k (b i)                         := eq₃
       _ = ∑ i ∈ s, (b.repr x₁ i + b.repr x₂ i) • k (b i)                  := by aesop
       _ = ∑ i ∈ s, (b.repr x₁ i • k (b i) + b.repr x₂ i • k (b i))        := by
