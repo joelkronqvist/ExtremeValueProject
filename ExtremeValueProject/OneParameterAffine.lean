@@ -299,34 +299,34 @@ lemma not_linear_of_additive :
   let ι := (Basis.ofVectorSpaceIndex ℚ ℝ : Type _)
   have b := Basis.ofVectorSpace ℚ ℝ
   change Basis ι ℚ ℝ at b
-  obtain ⟨i₀, i₁, i₂, hi₀₁, hi₀₂⟩ :
-      ∃ i₀ i₁ i₂ : (Basis.ofVectorSpaceIndex ℚ ℝ), b i₁ ≠ b i₀ ∧ b i₂ ≠ b i₀ := by
+  obtain ⟨i₀, i₁, i₂, hi₀₁, hi₀₂, i₁_ne_i₂⟩ :
+      ∃ i₀ i₁ i₂ : (Basis.ofVectorSpaceIndex ℚ ℝ), b i₁ ≠ b i₀ ∧ b i₂ ≠ b i₀ ∧ i₁ ≠ i₂ := by
     -- Real.rank_rat_real
     -- VectorSpace.card_fintype
     -- is rank_eq_mk_of_infinite_lt applicable?
     sorry
   let k (e : ℝ) : ℝ := if e = b i₀ then 1 else 0
-  have : k (b i₀) = 1 := by unfold k; simp
-  have : k (b i₁) = 0 := by unfold k; simp [hi₀₁]
-  have : k (b i₂) = 0 := by unfold k; simp [hi₀₂]
---  have t₇ (x : ℝ) := Basis.linearCombination_repr b x
---  have t₈ (x : ℝ) : ((b.repr x).sum fun i q ↦ q • b i) = x := by
---    simpa [Finsupp.linearCombination_apply ℚ] using t₇ x
---  have t₉ (x : ℝ) : ∃ s : Finset ι, ∑ i ∈ s, (b.repr x) i • b i = x :=
---    ⟨(b.repr x).support, b.linearCombination_repr x⟩
+  have k_apply (e : ℝ) : k e = if e = b i₀ then 1 else 0 := rfl
+  have k_one_of_not_zero (i : ι) (h : k (b i) ≠ 0) : k (b i) = 1 := by
+    obtain h₀ | h₁ : k (b i) = 1 ∨ k (b i) = 0 := ite_eq_or_eq (b i = b i₀) 1 0
+    · exact h₀
+    · exact absurd h₁ h
   let k' (x : ℝ) := (b.repr x).sum fun i q ↦ q • k (b i)
   have k'_apply (x : ℝ) :
       ∃ s : Finset ι, s ⊇ (b.repr x).support ∧
         ∀ t ⊇ s, k' x = ∑ i ∈ t, (b.repr x) i • k (b i) := by
     obtain ⟨s, hs⟩ : ∃ s : Finset ι, (b.repr x).support ⊆ s :=
-      ⟨(b.repr x).support, fun i hi => hi⟩
+      ⟨(b.repr x).support, fun i ↦ id⟩
     refine ⟨s, hs, ?_⟩
     intro t t_sup_s
     have ht : (b.repr x).support ⊆ t := Finset.coe_subset.mp fun ⦃a⦄ a_1 => t_sup_s (hs a_1)
     have term : k' x = (b.repr x).sum fun i q ↦ q • k (b i) := rfl
     rwa [Finsupp.sum_of_support_subset (b.repr x) ht _ (fun i hi ↦ zero_smul ℚ (k (b i)))] at term
-  use k'
-  constructor
+  have k'_apply_short (x : ℝ) :
+      ∃ s : Finset ι, s ⊇ (b.repr x).support ∧ k' x = ∑ i ∈ s, (b.repr x) i • k (b i) := by
+    obtain ⟨s, hs, rest⟩ := k'_apply x
+    exact ⟨s, hs, rest s (Finset.coe_subset.mp fun i ↦ id)⟩
+  refine ⟨k', ?_, ?_⟩
   · intro x₁ x₂
     obtain ⟨s₁, hs₁, eq₁⟩ := k'_apply x₁
     obtain ⟨s₂, hs₂, eq₂⟩ := k'_apply x₂
@@ -348,22 +348,24 @@ lemma not_linear_of_additive :
       _ = ∑ i ∈ s, b.repr x₁ i • k (b i) + ∑ i ∈ s, b.repr x₂ i • k (b i) := by
         rw [Finset.sum_add_distrib]
       _ = k' x₁ + k' x₂                                                   := by rw [eq₁, eq₂]
-  · by_contra hc
-    obtain ⟨α, k_linear⟩ := hc
-    --have : Monotone k' := by
-    --  intro a b hab
-    --  sorry --some simp or linarith
-    have : k' (b i₀) = 1 := sorry
-    have : k' (b i₁) = 0 := sorry
-    have : k' (b i₂) = 0 := sorry
-    rw [k_linear] at *
-    dsimp at *
-    -- this is easy
-    -- I think the most idiomatic argument considers the injectivity of k' (by linearity)
-    -- and finds it got the same value in two different places if α is nonzero.
-    -- if α = 0, then we have a contradiction with α * b i₀ = 1.
-    sorry
-    
+  · by_contra ⟨α, k_linear⟩
+    have k'_eq_k_of_b (i : ι) : k' (b i) = k (b i) := by
+      unfold k' k
+      simp
+    have k'_b_i₀_1 : k' (b i₀) = 1 := by simp [k'_eq_k_of_b i₀, k_apply]
+    have k'_b_i₁_0 : k' (b i₁) = 0 := by simp [k'_eq_k_of_b i₁, k_apply, hi₀₁]
+    have k'_b_i₂_0 : k' (b i₂) = 0 := by simp [k'_eq_k_of_b i₂, k_apply, hi₀₂]
+    by_cases α_zero : α = 0
+    · simp only [k_linear, α_zero, zero_mul, zero_ne_one] at k'_b_i₀_1
+    · have k'_b_injective : (k' ∘ b).Injective := by
+        refine Function.Injective.comp ?_ (Basis.injective b)
+        intro i j hij
+        obtain i_eq_j | α_eq_zero : i = j ∨ α = 0 := by simpa [k_linear] using hij
+        · exact i_eq_j
+        · exact absurd α_eq_zero α_zero
+      have k'_b_equal_i₁_i₂ : (k' ∘ b) i₁ = (k' ∘ b) i₂ := by simp [k'_b_i₁_0, k'_b_i₂_0]
+      exact absurd (k'_b_injective k'_b_equal_i₁_i₂) i₁_ne_i₂
+
 /-- A measurable multiplicative map ℝ → (0,+∞) is of the form s ↦ exp(α * s) for some α ∈ ℝ.
 (The only measurable solutions to the multiplicative version of the Cauchy-Hamel functional
 equation are the obvious ones.) -/
