@@ -281,10 +281,22 @@ lemma eq_const_mul_of_additive_of_measurable {f : ℝ → ℝ}
   ext x
   exact linear_of_additive_of_measurable f_add f_mble x
 
+namespace Finset
+
+lemma subset_union_of_subset_left
+    {α : Type*} [DecidableEq α] {s t : Finset α} (h : s ⊆ t) (u : Finset α) : s ⊆ t ∪ u :=
+  h.trans subset_union_left
+
+lemma subset_union_of_subset_right
+    {α : Type*} [DecidableEq α] {s u : Finset α} (h : s ⊆ u) (t : Finset α) : s ⊆ t ∪ u :=
+  h.trans subset_union_right
+
+end Finset
+
 open Module in
 lemma not_linear_of_additive :
     ∃ f : ℝ → ℝ, (∀ s₁ s₂ : ℝ, f (s₁ + s₂) = f s₁ + f s₂) ∧ ¬∃ α : ℝ, f = (α * ·) := by
-  let ι := (Basis.ofVectorSpaceIndex ℚ ℝ : Type _)  
+  let ι := (Basis.ofVectorSpaceIndex ℚ ℝ : Type _)
   have b := Basis.ofVectorSpace ℚ ℝ
   change Basis ι ℚ ℝ at b
   obtain ⟨i₀, i₁, i₂, hi₀₁, hi₀₂⟩ :
@@ -297,67 +309,45 @@ lemma not_linear_of_additive :
   have : k (b i₀) = 1 := by unfold k; simp
   have : k (b i₁) = 0 := by unfold k; simp [hi₀₁]
   have : k (b i₂) = 0 := by unfold k; simp [hi₀₂]
-  have t₇ (x : ℝ) := Basis.linearCombination_repr b x
-  have t₈ (x : ℝ) : ((b.repr x).sum fun i q ↦ q • b i) = x := by
-    simpa [Finsupp.linearCombination_apply ℚ] using t₇ x
-  have t₉ (x : ℝ) : ∃ s : Finset ι, ∑ i ∈ s, (b.repr x) i • b i = x :=
-    ⟨(b.repr x).support, b.linearCombination_repr x⟩
+--  have t₇ (x : ℝ) := Basis.linearCombination_repr b x
+--  have t₈ (x : ℝ) : ((b.repr x).sum fun i q ↦ q • b i) = x := by
+--    simpa [Finsupp.linearCombination_apply ℚ] using t₇ x
+--  have t₉ (x : ℝ) : ∃ s : Finset ι, ∑ i ∈ s, (b.repr x) i • b i = x :=
+--    ⟨(b.repr x).support, b.linearCombination_repr x⟩
   let k' (x : ℝ) := (b.repr x).sum fun i q ↦ q • k (b i)
-  have k'_apply (x : ℝ) : ∃ s : Finset ι, k' x = ∑ i ∈ s, (b.repr x) i • k (b i) := by
+  have k'_apply (x : ℝ) :
+      ∃ s : Finset ι, s ⊇ (b.repr x).support ∧
+        ∀ t ⊇ s, k' x = ∑ i ∈ t, (b.repr x) i • k (b i) := by
     obtain ⟨s, hs⟩ : ∃ s : Finset ι, (b.repr x).support ⊆ s :=
       ⟨(b.repr x).support, fun i hi => hi⟩
-    use s
-    have t : k' x = (b.repr x).sum fun i q ↦ q • k (b i) := rfl
-    rw [Finsupp.sum_of_support_subset (b.repr x)] at t
-    · exact t
-    · exact hs
-    · exact fun i hi ↦ zero_smul ℚ (k (b i))
+    refine ⟨s, hs, ?_⟩
+    intro t t_sup_s
+    have ht : (b.repr x).support ⊆ t := Finset.coe_subset.mp fun ⦃a⦄ a_1 => t_sup_s (hs a_1)
+    have term : k' x = (b.repr x).sum fun i q ↦ q • k (b i) := rfl
+    rwa [Finsupp.sum_of_support_subset (b.repr x) ht _ (fun i hi ↦ zero_smul ℚ (k (b i)))] at term
   use k'
   constructor
   · intro x₁ x₂
-    have : ∃ s : Finset ι,
-             k' x₁ = ∑ i ∈ s, (b.repr x₁) i • k (b i) ∧
-             k' x₂ = ∑ i ∈ s, (b.repr x₂) i • k (b i) ∧
-             k' (x₁ + x₂) = ∑ i ∈ s, (b.repr (x₁ + x₂)) i • k (b i) := by
-      obtain ⟨s₁, hs₁⟩ : ∃ s : Finset ι, (b.repr x₁).support ⊆ s :=
-        ⟨(b.repr x₁).support, fun i hi => hi⟩
-      obtain ⟨s₂, hs₂⟩ : ∃ s : Finset ι, (b.repr x₂).support ⊆ s :=
-        ⟨(b.repr x₂).support, fun i hi => hi⟩
-      obtain ⟨s₃, hs₃⟩ : ∃ s : Finset ι, (b.repr (x₁ + x₂)).support ⊆ s :=
-        ⟨(b.repr (x₁ + x₂)).support, fun i hi => hi⟩        
-      use s₁ ∪ s₂ ∪ s₃
-      refine ⟨?_, ?_, ?_⟩
-      · have t : k' x₁ = (b.repr x₁).sum fun i q ↦ q • k (b i) := rfl
-        rw [Finsupp.sum_of_support_subset (b.repr x₁)] at t
-        · exact t
-        · have : (b.repr x₁).support ⊆ s₁ ∪ s₂ := by
-            exact_mod_cast subset_union_of_subset_left hs₁ s₂
-          exact_mod_cast subset_union_of_subset_left this s₃
-        · exact fun i hi ↦ zero_smul ℚ (k (b i))
-      · have t : k' x₂ = (b.repr x₂).sum fun i q ↦ q • k (b i) := rfl
-        rw [Finsupp.sum_of_support_subset (b.repr x₂)] at t
-        · exact t
-        · have : (b.repr x₂).support ⊆ s₁ ∪ s₂ := by
-            exact_mod_cast subset_union_of_subset_right hs₂ s₁ 
-          exact_mod_cast subset_union_of_subset_left this s₃
-        · exact fun i hi ↦ zero_smul ℚ (k (b i))
-      · have t : k' (x₁ + x₂) = (b.repr (x₁ + x₂)).sum fun i q ↦ q • k (b i) := rfl
-        rw [Finsupp.sum_of_support_subset (b.repr (x₁ + x₂))] at t
-        · exact t
-        · exact_mod_cast subset_union_of_subset_right hs₃ (s₁ ∪ s₂)
-        · exact fun i hi ↦ zero_smul ℚ (k (b i))
-    obtain ⟨s, h₁, h₂, h₃⟩ := this
+    obtain ⟨s₁, hs₁, eq₁⟩ := k'_apply x₁
+    obtain ⟨s₂, hs₂, eq₂⟩ := k'_apply x₂
+    obtain ⟨s₃, hs₃, eq₃⟩ := k'_apply (x₁ + x₂)
+    let s := s₁ ∪ s₂ ∪ s₃
+    have eq₁ := eq₁ s (Finset.subset_union_of_subset_left Finset.subset_union_left s₃)
+    have eq₂ := eq₂ s (Finset.subset_union_of_subset_left Finset.subset_union_right s₃)
+    have eq₃ := eq₃ s Finset.subset_union_right
     calc
       k' (x₁ + x₂)
-      _ = ∑ i ∈ s, (b.repr (x₁ + x₂)) i • k (b i) := h₃
-      _ = ∑ i ∈ s, (b.repr x₁ i + b.repr x₂ i) • k (b i) := by aesop
-      _ = ∑ i ∈ s, (b.repr x₁ i • k (b i) + b.repr x₂ i • k (b i)) := by
-        have t (i : ι) : (b.repr x₁ i + b.repr x₂ i) • k (b i) = (b.repr x₁ i • k (b i) + b.repr x₂ i • k (b i)) := by
-          rw [add_smul (b.repr x₁ i) (b.repr x₂ i) (k (b i))]        
-        grind -- rw not working?
+      _ = ∑ i ∈ s, (b.repr (x₁ + x₂)) i • k (b i)                         := eq₃
+      _ = ∑ i ∈ s, (b.repr x₁ i + b.repr x₂ i) • k (b i)                  := by aesop
+      _ = ∑ i ∈ s, (b.repr x₁ i • k (b i) + b.repr x₂ i • k (b i))        := by
+        conv =>
+          rhs
+          rhs
+          ext i
+          rw [← add_smul (b.repr x₁ i) (b.repr x₂ i) (k (b i))]
       _ = ∑ i ∈ s, b.repr x₁ i • k (b i) + ∑ i ∈ s, b.repr x₂ i • k (b i) := by
         rw [Finset.sum_add_distrib]
-      _ = k' x₁ + k' x₂ := by rw [h₁, h₂]
+      _ = k' x₁ + k' x₂                                                   := by rw [eq₁, eq₂]
   · by_contra hc
     obtain ⟨α, k_linear⟩ := hc
     --have : Monotone k' := by
