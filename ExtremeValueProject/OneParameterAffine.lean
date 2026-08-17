@@ -180,7 +180,7 @@ lemma Ioo_union_Ioo_eq_Ioo_sdiff_singleton
   grind
 
 lemma iUnion_Ioo_eq_Ioo_sdiff_singletons
-    (m : ℕ) {f : ℕ → ℝ} (f_mono : Monotone f) :
+    {α : Type*} [LinearOrder α] (m : ℕ) {f : ℕ → α} (f_mono : Monotone f) :
     ⋃ i : Fin m, Ioo (f i) (f (i + 1)) = Ioo (f 0) (f m) \ (f '' (Set.Ioo 0 m : Set ℕ)) := by
   induction m with
   | zero => simp
