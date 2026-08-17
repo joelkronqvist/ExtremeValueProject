@@ -185,17 +185,7 @@ lemma iUnion_Ioo_eq_Ioo_sdiff_singletons
   induction m with
   | zero => simp
   | succ m ih =>
-    rw [Set.iUnion_fin_add_one_eq_iUnion_castSucc]
-    show (⋃ (i : Fin m), (Ioo (f i.castSucc) (f (i.castSucc + 1))))
-           ∪ Ioo (f (Fin.last m)) (f ((Fin.last m) + 1))
-         = Ioo (f 0) (f (m + 1)) \ f '' Ioo 0 (m + 1)
-    have h₁ : Ioo (f (Fin.last m)) (f ((Fin.last m) + 1)) = Ioo (f m) (f (m + 1)) := by
-      simp [Fin.val_last]
-    have h₂ : (⋃ i : Fin m, Ioo (f i.castSucc) (f (i.castSucc + 1)))
-                = ⋃ i : Fin m, Ioo (f i) (f (i + 1)) := by
-      exact iUnion_congr (congrFun rfl)
-    rw [h₁, h₂, ih]
-    have : Ioo (f 0) (f m) \ f '' Ioo 0 m ∪ Ioo (f m) (f (m + 1)) =
+    have aux : Ioo (f 0) (f m) \ f '' Ioo 0 m ∪ Ioo (f m) (f (m + 1)) =
              (Ioo (f 0) (f m) ∪ Ioo (f m) (f (m + 1))) \ f '' Ioo 0 m := by
       suffices Ioo (f m) (f (m + 1)) \ f '' Ioo 0 m = Ioo (f m) (f (m + 1)) by
         rw [union_sdiff_distrib, this]
@@ -205,23 +195,29 @@ lemma iUnion_Ioo_eq_Ioo_sdiff_singletons
         have hfy : f y ≤ f m := f_mono (Nat.le_of_lt hy.2)
         exact (not_lt_of_ge hfy) hmx
       exact Disjoint.sdiff_eq_right (Disjoint.symm this)
-    rw [this]
-    rw [Ioo_union_Ioo_eq_Ioo_sdiff_singleton
-          (f_mono (Nat.zero_le m))
-          (f_mono (Nat.le_add_right m 1))]
-    rw [sdiff_sdiff]
-    by_cases m_zero : m = 0
-    · have : (Ioo 0 1 : Set ℕ) = ∅ := by simp
-      simp [m_zero, this]
-    have : {f m} ∪ f '' Ioo 0 m =  f '' Ioo 0 (m + 1) := by
-      have : (Ioo 0 (m + 1) : Set ℕ) = {m} ∪ Ioo 0 m := by
-        ext n
-        simp only [Set.mem_Ioo, Set.mem_union, Set.mem_singleton_iff]
-        refine Iff.intro (fun h => ?_) (fun h => ?_)
-        any_goals rcases h with l | r
-        all_goals omega
-      rw [this, image_union, image_singleton]
-    rw [this]
+    calc
+      ⋃ (i : Fin (m + 1)), Ioo (f ↑i) (f (↑i + 1))
+      _ = (⋃ (i : Fin m), (Ioo (f i.castSucc) (f (i.castSucc + 1)))) ∪
+            Ioo (f (Fin.last m)) (f ((Fin.last m) + 1)) := by
+        rw [Set.iUnion_fin_add_one_eq_iUnion_castSucc]
+        rfl
+      _ = (⋃ (i : Fin m), Ioo (f i) (f (i + 1))) ∪ Ioo (f m) (f (m + 1)) := by simp [Fin.val_last]
+      _ = Ioo (f 0) (f m) \ f '' Ioo 0 m ∪ Ioo (f m) (f (m + 1))         := by rw [ih]
+      _ = (Ioo (f 0) (f m) ∪ Ioo (f m) (f (m + 1))) \ f '' Ioo 0 m       := by rw [aux]
+      _ = (Ioo (f 0) (f (m + 1)) \ {f m}) \ f '' Ioo 0 m := by
+        rw [Ioo_union_Ioo_eq_Ioo_sdiff_singleton
+              (f_mono (Nat.zero_le m)) (f_mono (Nat.le_add_right m 1))]
+      _ = Ioo (f 0) (f (m + 1)) \ ({f m} ∪ f '' Ioo 0 m)                 := by rw [sdiff_sdiff]
+      _ = Ioo (f 0) (f (m + 1)) \ f '' Ioo 0 (m + 1) := by
+         by_cases m_zero : m = 0
+         · have : (Ioo 0 1 : Set ℕ) = ∅ := by simp
+           simp [m_zero, this]
+         suffices (Ioo 0 (m + 1) : Set ℕ) = {m} ∪ Ioo 0 m by rw [this, image_union, image_singleton]
+         ext n
+         simp only [Set.mem_Ioo, Set.mem_union, Set.mem_singleton_iff]
+         refine Iff.intro (fun h ↦ ?_) (fun h ↦ ?_)
+         any_goals rcases h with l | r
+         all_goals omega
 
 lemma exists_subinterval_preserving_volume_property
     {A : Set ℝ} {a b : ℝ} (a_le_b : a < b) {r : ENNReal}
