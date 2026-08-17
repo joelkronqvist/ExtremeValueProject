@@ -189,12 +189,10 @@ lemma iUnion_Ioo_eq_Ioo_sdiff_singletons
              (Ioo (f 0) (f m) ∪ Ioo (f m) (f (m + 1))) \ f '' Ioo 0 m := by
       suffices Ioo (f m) (f (m + 1)) \ f '' Ioo 0 m = Ioo (f m) (f (m + 1)) by
         rw [union_sdiff_distrib, this]
-      have : Disjoint (Ioo (f m) (f (m + 1))) (f '' Ioo 0 m) := by
-        rw [Set.disjoint_left]
-        rintro x ⟨hmx, _⟩ ⟨y, hy, rfl⟩
-        have hfy : f y ≤ f m := f_mono (Nat.le_of_lt hy.2)
-        exact (not_lt_of_ge hfy) hmx
-      exact Disjoint.sdiff_eq_right (Disjoint.symm this)
+      apply Disjoint.sdiff_eq_right (Set.disjoint_left.mpr ?_)
+      rintro x ⟨y, hy, rfl⟩ ⟨hmx, _⟩
+      have f_Ioo_ub : f y ≤ f m := f_mono (Nat.le_of_lt hy.right)
+      exact (not_lt_of_ge f_Ioo_ub) hmx
     calc
       ⋃ (i : Fin (m + 1)), Ioo (f ↑i) (f (↑i + 1))
       _ = (⋃ (i : Fin m), (Ioo (f i.castSucc) (f (i.castSucc + 1)))) ∪
