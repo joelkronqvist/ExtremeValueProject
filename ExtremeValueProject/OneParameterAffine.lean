@@ -194,19 +194,19 @@ lemma iUnion_Ioo_eq_Ioo_sdiff_singletons
       have f_Ioo_ub : f y ≤ f m := f_mono (Nat.le_of_lt hy.right)
       exact (not_lt_of_ge f_Ioo_ub) hmx
     calc
-      ⋃ (i : Fin (m + 1)), Ioo (f ↑i) (f (↑i + 1))
+          ⋃ (i : Fin (m + 1)), Ioo (f ↑i) (f (↑i + 1))
       _ = (⋃ (i : Fin m), (Ioo (f i.castSucc) (f (i.castSucc + 1)))) ∪
-            Ioo (f (Fin.last m)) (f ((Fin.last m) + 1)) := by
+            Ioo (f (Fin.last m)) (f ((Fin.last m) + 1))                  := by
         rw [Set.iUnion_fin_add_one_eq_iUnion_castSucc]
         rfl
       _ = (⋃ (i : Fin m), Ioo (f i) (f (i + 1))) ∪ Ioo (f m) (f (m + 1)) := by simp [Fin.val_last]
       _ = Ioo (f 0) (f m) \ f '' Ioo 0 m ∪ Ioo (f m) (f (m + 1))         := by rw [ih]
       _ = (Ioo (f 0) (f m) ∪ Ioo (f m) (f (m + 1))) \ f '' Ioo 0 m       := by rw [aux]
-      _ = (Ioo (f 0) (f (m + 1)) \ {f m}) \ f '' Ioo 0 m := by
+      _ = (Ioo (f 0) (f (m + 1)) \ {f m}) \ f '' Ioo 0 m                 := by
         rw [Ioo_union_Ioo_eq_Ioo_sdiff_singleton
               (f_mono (Nat.zero_le m)) (f_mono (Nat.le_add_right m 1))]
       _ = Ioo (f 0) (f (m + 1)) \ ({f m} ∪ f '' Ioo 0 m)                 := by rw [sdiff_sdiff]
-      _ = Ioo (f 0) (f (m + 1)) \ f '' Ioo 0 (m + 1) := by
+      _ = Ioo (f 0) (f (m + 1)) \ f '' Ioo 0 (m + 1)                     := by
          by_cases m_zero : m = 0
          · have : (Ioo 0 1 : Set ℕ) = ∅ := by simp
            simp [m_zero, this]
