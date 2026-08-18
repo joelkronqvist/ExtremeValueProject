@@ -314,17 +314,14 @@ lemma not_linear_of_additive :
     obtain ⟨i₁, hi₁⟩ := Infinite.exists_notMem_finset {i₀}
     obtain ⟨i₂, hi₂⟩ := Infinite.exists_notMem_finset ({i₀} ∪ {i₁})
     have i₁_ne_i₀ : i₁ ≠ i₀ := by simpa using hi₁
-    obtain ⟨i₂_ne_i₀, i₂_ne_i₁⟩: i₂ ≠ i₀ ∧ i₂ ≠ i₁ := by simpa using hi₂
+    obtain ⟨i₂_ne_i₀, i₂_ne_i₁⟩ : i₂ ≠ i₀ ∧ i₂ ≠ i₁ := by simpa using hi₂
     refine ⟨i₀, i₁, i₂, ?_, ?_, ?_⟩
-    · exact Function.Injective.ne (Basis.injective b) i₁_ne_i₀
-    · exact Function.Injective.ne (Basis.injective b) i₂_ne_i₀
-    · exact i₂_ne_i₁.symm
+    any_goals apply Function.Injective.ne (Basis.injective b)
+    all_goals aesop
   let k (e : ℝ) : ℝ := if e = b i₀ then 1 else 0
   have k_apply (e : ℝ) : k e = if e = b i₀ then 1 else 0 := rfl
   have k_one_of_not_zero (i : ι) (h : k (b i) ≠ 0) : k (b i) = 1 := by
-    obtain h₀ | h₁ : k (b i) = 1 ∨ k (b i) = 0 := ite_eq_or_eq (b i = b i₀) 1 0
-    · exact h₀
-    · exact absurd h₁ h
+    obtain h₀ | h₁ : k (b i) = 1 ∨ k (b i) = 0 := ite_eq_or_eq (b i = b i₀) 1 0 <;> aesop
   let k' (x : ℝ) := (b.repr x).sum fun i q ↦ q • k (b i)
   have k'_apply (x : ℝ) :
       ∃ s : Finset ι, s ⊇ (b.repr x).support ∧
@@ -334,8 +331,8 @@ lemma not_linear_of_additive :
     refine ⟨s, hs, ?_⟩
     intro t t_sup_s
     have ht : (b.repr x).support ⊆ t := Finset.coe_subset.mp fun ⦃a⦄ a_1 => t_sup_s (hs a_1)
-    have term : k' x = (b.repr x).sum fun i q ↦ q • k (b i) := rfl
-    rwa [Finsupp.sum_of_support_subset (b.repr x) ht _ (fun i hi ↦ zero_smul ℚ (k (b i)))] at term
+    have aux : k' x = (b.repr x).sum fun i q ↦ q • k (b i) := rfl
+    rwa [Finsupp.sum_of_support_subset (b.repr x) ht _ (fun i hi ↦ zero_smul ℚ (k (b i)))] at aux
   have k'_apply_short (x : ℝ) :
       ∃ s : Finset ι, s ⊇ (b.repr x).support ∧ k' x = ∑ i ∈ s, (b.repr x) i • k (b i) := by
     obtain ⟨s, hs, rest⟩ := k'_apply x
@@ -375,8 +372,7 @@ lemma not_linear_of_additive :
         refine Function.Injective.comp ?_ (Basis.injective b)
         intro i j hij
         obtain i_eq_j | α_eq_zero : i = j ∨ α = 0 := by simpa [k_linear] using hij
-        · exact i_eq_j
-        · exact absurd α_eq_zero α_zero
+        all_goals aesop
       have k'_b_equal_i₁_i₂ : (k' ∘ b) i₁ = (k' ∘ b) i₂ := by simp [k'_b_i₁_0, k'_b_i₂_0]
       exact absurd (k'_b_injective k'_b_equal_i₁_i₂) i₁_ne_i₂
 
