@@ -162,54 +162,65 @@ lemma IsOpen.countable_setOf_connectedComponentIn
     exact congr_arg (Subtype.val '' ·) hψC
   exact Function.Injective.countable ψ_inj
 
+private lemma x_ne_sup
+    {U : Set ℝ} (U_open : IsOpen U) (babove : BddAbove U) {x : ℝ} (hx : x ∈ U) :
+    x ≠ sSup U := by
+  by_contra x_eq_sup
+  obtain ⟨ε, ε_pos, ball_sub_U⟩ : ∃ ε > 0, Metric.ball x ε ⊆ U := Metric.isOpen_iff.mp U_open x hx
+  suffices x + ε / 2 ≤ sSup U by linarith
+  refine le_csSup babove (mem_of_subset_of_mem ball_sub_U ?_)
+  grw [Metric.mem_ball, Real.dist_eq]
+  simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
+
+private lemma x_ne_inf
+    {U : Set ℝ} (U_open : IsOpen U) (bbelow : BddBelow U) {x : ℝ} (hx : x ∈ U) :
+    sInf U ≠ x := by
+  by_contra x_eq_inf
+  obtain ⟨ε, ε_pos, ball_sub_U⟩ : ∃ ε > 0, Metric.ball x ε ⊆ U := Metric.isOpen_iff.mp U_open x hx
+  suffices sInf U ≤ x - ε / 2 by linarith
+  refine csInf_le bbelow (mem_of_subset_of_mem ball_sub_U ?_)
+  grw [Metric.mem_ball, Real.dist_eq]
+  simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
+
+lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_bdd
+    {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
+    (U_bdda : BddAbove U) (U_bddb : BddBelow U) :
+    ∃ a b, U = Ioo a b := by
+  refine ⟨sInf U, sSup U, Subset.antisymm (fun x hx ↦ ⟨?_, ?_⟩) ?_⟩
+  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_inf U_open U_bddb hx)
+  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sup U_open U_bdda hx)
+  · apply U_conn.Ioo_csInf_csSup_subset <;> assumption
+
+lemma Real.eq_Iio_of_isOpen_of_isConnected_of_bdda_ubb
+    {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
+    (U_bdda : BddAbove U) (U_ubb : ¬BddBelow U) :
+    ∃ a, U = Iio a := by
+  refine ⟨sSup U, Subset.antisymm (fun x hx ↦ ?_) ?_⟩
+  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sup U_open U_bdda hx)
+  · apply U_conn.isPreconnected.Iio_csSup_subset <;> assumption
+
+lemma Real.eq_Ioi_of_isOpen_of_isConnected_of_uba_bddb
+    {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
+    (U_bdda : ¬BddAbove U) (U_bddb : BddBelow U) :
+    ∃ a, U = Ioi a := by
+  refine ⟨sInf U, Subset.antisymm (fun x hx ↦ ?_) ?_⟩
+  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_inf U_open U_bddb hx)
+  · apply U_conn.isPreconnected.Ioi_csInf_subset <;> assumption
+
 lemma Real.eq_Ioo_or_Iio_or_Ioi_or_univ_of_isOpen_of_isConnected
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U) :
     (∃ a b, U = Ioo a b) ∨ (∃ b, U = Iio b) ∨ (∃ a, U = Ioi a) ∨ U = univ := by
-  have U_nonempty : U.Nonempty := U_conn.left
-  have x_ne_sup (babove : BddAbove U) {x : ℝ} (hx : x ∈ U) : x ≠ sSup U := by
-    by_contra x_eq_sup
-    obtain ⟨ε, ε_pos, ball_sub_U⟩ : ∃ ε > 0, Metric.ball x ε ⊆ U := Metric.isOpen_iff.mp U_open x hx
-    suffices x + ε / 2 ≤ sSup U by linarith
-    refine le_csSup babove (mem_of_subset_of_mem ball_sub_U ?_)
-    grw [Metric.mem_ball, Real.dist_eq]
-    simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
-  have x_ne_inf (bbelow : BddBelow U) {x : ℝ} (hx : x ∈ U) : sInf U ≠ x := by
-    by_contra x_eq_inf
-    obtain ⟨ε, ε_pos, ball_sub_U⟩ : ∃ ε > 0, Metric.ball x ε ⊆ U := Metric.isOpen_iff.mp U_open x hx
-    suffices sInf U ≤ x - ε / 2 by linarith
-    refine csInf_le bbelow (mem_of_subset_of_mem ball_sub_U ?_)
-    grw [Metric.mem_ball, Real.dist_eq]
-    simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
-  by_cases babove : BddAbove U <;> by_cases bbelow : BddBelow U
-  · left
-    use sInf U, sSup U
-    apply Subset.antisymm
-    · intro x hx
-      rw [mem_Ioo]
-      exact ⟨Std.lt_of_le_of_ne (csInf_le bbelow hx) (x_ne_inf bbelow hx),
-             Std.lt_of_le_of_ne (le_csSup babove hx) (x_ne_sup babove hx)⟩
-    · apply U_conn.Ioo_csInf_csSup_subset <;> assumption
-  · right; left
-    use sSup U
-    apply Subset.antisymm
-    · intro x hx
-      rw [mem_Iio]
-      exact Std.lt_of_le_of_ne (le_csSup babove hx) (x_ne_sup babove hx)
-    · apply U_conn.isPreconnected.Iio_csSup_subset <;> assumption
-  · right; right; left
-    use sInf U
-    apply Subset.antisymm
-    · intro x hx
-      rw [mem_Ioi]
-      exact Std.lt_of_le_of_ne (csInf_le bbelow hx) (x_ne_inf bbelow hx)
-    · apply U_conn.isPreconnected.Ioi_csInf_subset <;> assumption
-  · exact Or.inr (Or.inr (Or.inr (U_conn.isPreconnected.eq_univ_of_unbounded bbelow babove)))
+  by_cases above : BddAbove U <;> by_cases below : BddBelow U
+  · left;                exact eq_Ioo_of_isOpen_of_isConnected_of_bdd      U_open U_conn above below
+  · right; left;         exact eq_Iio_of_isOpen_of_isConnected_of_bdda_ubb U_open U_conn above below
+  · right; right; left;  exact eq_Ioi_of_isOpen_of_isConnected_of_uba_bddb U_open U_conn above below
+  · right; right; right; exact U_conn.isPreconnected.eq_univ_of_unbounded below above
 
 lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U) (U_lt_top : volume U < ⊤) :
     ∃ a b : ℝ, a < b ∧ U = Ioo a b := by
   have U_nonempty : U.Nonempty := U_conn.left
-  have U_bdd_above : BddAbove U := by
+  have babove : BddAbove U := by
     by_contra ub
     obtain ⟨x, hx⟩ := U_nonempty
     have Ioi_x_subset_U : Ioi x ⊆ U := fun y hy ↦
@@ -218,29 +229,14 @@ lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
     have contradiction : volume U = ⊤ :=
       MeasureTheory.measure_eq_top_mono Ioi_x_subset_U volume_Ioi
     exact (LT.lt.ne_top U_lt_top) contradiction
-  have U_bdd_below : BddBelow U := by
+  have bbelow : BddBelow U := by
     by_contra ub
-    have Iio_subset_U := U_conn.isPreconnected.Iio_csSup_subset ub U_bdd_above
+    have Iio_subset_U := U_conn.isPreconnected.Iio_csSup_subset ub babove
     have contradiction : volume U = ⊤ :=
       MeasureTheory.measure_eq_top_mono Iio_subset_U volume_Iio
     exact (LT.lt.ne_top U_lt_top) contradiction
-  use sInf U, sSup U
-  have U_is_Ioo : U = Ioo (sInf U) (sSup U) := by
-    apply Subset.antisymm
-    · intro x hx
-      obtain ⟨ε, ε_pos, ball_subset_U⟩ := Metric.isOpen_iff.mp U_open x hx
-      grw [mem_Ioo, csInf_lt_iff, lt_csSup_iff]
-      assumption'
-      constructor
-      refine ⟨x - ε / 2, ?_, by linarith⟩; swap; refine ⟨x + ε / 2, ?_, by linarith⟩
-      all_goals grw [← ball_subset_U, Metric.mem_ball, Real.dist_eq]
-      all_goals simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
-    · apply IsConnected.Ioo_csInf_csSup_subset U_conn <;> assumption
-  constructor
-  · obtain ⟨x, x_in_U⟩ := IsConnected.nonempty U_conn
-    rw [U_is_Ioo, mem_Ioo] at x_in_U
-    linarith
-  · exact U_is_Ioo
+  obtain ⟨a, b, U_is_Ioo⟩ := Real.eq_Ioo_of_isOpen_of_isConnected_of_bdd U_open U_conn babove bbelow
+  refine ⟨a, b, ?_, ?_⟩ <;> aesop
 
 lemma exists_interval_measure_inter_gt_mul_measure
     {A : Set ℝ} (A_mble : MeasurableSet A) (A_pos : 0 < volume A) (A_fin : volume A < ⊤)
