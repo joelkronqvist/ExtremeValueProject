@@ -165,7 +165,7 @@ lemma IsOpen.countable_setOf_connectedComponentIn
 private lemma sSup_not_mem_interior
     {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
     [OrderTopology α] [DenselyOrdered α] [NoMaxOrder α] [NoMinOrder α]
-    {U : Set α} (U_bdd_above : BddAbove U) :
+    {U : Set α} (U_bddAbove : BddAbove U) :
     sSup U ∉ interior U := by
   by_cases U_nonempty : U.Nonempty
   · intro sup_in_interior
@@ -173,7 +173,7 @@ private lemma sSup_not_mem_interior
       simpa [mem_interior_iff_mem_nhds, mem_nhds_iff_exists_Ioo_subset] using sup_in_interior
     obtain ⟨a, sup_lt_a, a_lt_u⟩ := exists_between mem_Ioo.right
     have a_in_U : a ∈ U := Ioo_sub_U ⟨lt_trans mem_Ioo.left sup_lt_a, a_lt_u⟩
-    exact (not_lt_of_ge (le_csSup U_bdd_above a_in_U)) sup_lt_a
+    exact (not_lt_of_ge (le_csSup U_bddAbove a_in_U)) sup_lt_a
   · rw [not_nonempty_iff_eq_empty] at U_nonempty
     simp [U_nonempty]
 
@@ -181,54 +181,57 @@ private lemma sSup_not_mem_interior
 private lemma sInf_not_mem_interior
     {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
     [OrderTopology α] [DenselyOrdered α] [NoMinOrder α] [NoMaxOrder α]
-    {U : Set α} (U_bdd_below : BddBelow U) :
+    {U : Set α} (U_bddBelow : BddBelow U) :
     sInf U ∉ interior U := by
   change sSup (α := αᵒᵈ) U ∉ interior U
-  exact sSup_not_mem_interior U_bdd_below
+  exact sSup_not_mem_interior U_bddBelow
 
 @[to_dual]
 private lemma x_ne_sSup
     {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
     [OrderTopology α] [DenselyOrdered α] [NoMaxOrder α] [NoMinOrder α]
-    {U : Set α} (U_open : IsOpen U) (babove : BddAbove U)
+    {U : Set α} (U_open : IsOpen U) (U_bddAbove : BddAbove U)
     {x : α} (x_in_U : x ∈ U) :
     x ≠ sSup U := by
   intro x_eq_sup
   rw [← IsOpen.interior_eq U_open, x_eq_sup] at x_in_U
-  exact (sSup_not_mem_interior babove) x_in_U
+  exact (sSup_not_mem_interior U_bddAbove) x_in_U
 
-lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_bdd
+lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_bddBelow_bddAbove
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
-    (U_bdda : BddAbove U) (U_bddb : BddBelow U) :
+    (U_bddBelow : BddBelow U) (U_bddAbove : BddAbove U) :
     ∃ a b, U = Ioo a b := by
   refine ⟨sInf U, sSup U, Subset.antisymm (fun x hx ↦ ⟨?_, ?_⟩) ?_⟩
-  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_sInf U_open U_bddb hx).symm
-  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sSup U_open U_bdda hx)
+  · exact Std.lt_of_le_of_ne (csInf_le U_bddBelow hx) (x_ne_sInf U_open U_bddBelow hx).symm
+  · exact Std.lt_of_le_of_ne (le_csSup U_bddAbove hx) (x_ne_sSup U_open U_bddAbove hx)
   · apply U_conn.Ioo_csInf_csSup_subset <;> assumption
 
-lemma Real.eq_Iio_of_isOpen_of_isConnected_of_bdda_ubb
+lemma Real.eq_Iio_of_isOpen_of_isConnected_of_notBddBelow_bddAbove
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
-    (U_bdda : BddAbove U) (U_ubb : ¬BddBelow U) :
+    (U_notBddBelow : ¬BddBelow U) (U_bddAbove : BddAbove U) :
     ∃ a, U = Iio a := by
   refine ⟨sSup U, Subset.antisymm (fun x hx ↦ ?_) ?_⟩
-  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sSup U_open U_bdda hx)
+  · exact Std.lt_of_le_of_ne (le_csSup U_bddAbove hx) (x_ne_sSup U_open U_bddAbove hx)
   · apply U_conn.isPreconnected.Iio_csSup_subset <;> assumption
 
-lemma Real.eq_Ioi_of_isOpen_of_isConnected_of_uba_bddb
+lemma Real.eq_Ioi_of_isOpen_of_isConnected_of_bddBelow_notBddAbove
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
-    (U_bdda : ¬BddAbove U) (U_bddb : BddBelow U) :
+    (U_bddBelow : BddBelow U) (U_notBddAbove : ¬BddAbove U) :
     ∃ a, U = Ioi a := by
   refine ⟨sInf U, Subset.antisymm (fun x hx ↦ ?_) ?_⟩
-  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_sInf U_open U_bddb hx).symm
+  · exact Std.lt_of_le_of_ne (csInf_le U_bddBelow hx) (x_ne_sInf U_open U_bddBelow hx).symm
   · apply U_conn.isPreconnected.Ioi_csInf_subset <;> assumption
 
 lemma Real.eq_Ioo_or_Iio_or_Ioi_or_univ_of_isOpen_of_isConnected
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U) :
     (∃ a b, U = Ioo a b) ∨ (∃ b, U = Iio b) ∨ (∃ a, U = Ioi a) ∨ U = univ := by
   by_cases above : BddAbove U <;> by_cases below : BddBelow U
-  · left;                exact eq_Ioo_of_isOpen_of_isConnected_of_bdd      U_open U_conn above below
-  · right; left;         exact eq_Iio_of_isOpen_of_isConnected_of_bdda_ubb U_open U_conn above below
-  · right; right; left;  exact eq_Ioi_of_isOpen_of_isConnected_of_uba_bddb U_open U_conn above below
+  · left
+    exact eq_Ioo_of_isOpen_of_isConnected_of_bddBelow_bddAbove U_open U_conn below above
+  · right; left
+    exact eq_Iio_of_isOpen_of_isConnected_of_notBddBelow_bddAbove U_open U_conn below above
+  · right; right; left
+    exact eq_Ioi_of_isOpen_of_isConnected_of_bddBelow_notBddAbove U_open U_conn below above
   · right; right; right; exact U_conn.isPreconnected.eq_univ_of_unbounded below above
 
 lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
@@ -250,7 +253,8 @@ lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
     have contradiction : volume U = ⊤ :=
       MeasureTheory.measure_eq_top_mono Iio_subset_U volume_Iio
     exact (LT.lt.ne_top U_lt_top) contradiction
-  obtain ⟨a, b, U_is_Ioo⟩ := Real.eq_Ioo_of_isOpen_of_isConnected_of_bdd U_open U_conn babove bbelow
+  obtain ⟨a, b, U_is_Ioo⟩ :=
+    Real.eq_Ioo_of_isOpen_of_isConnected_of_bddBelow_bddAbove U_open U_conn bbelow babove
   refine ⟨a, b, ?_, ?_⟩ <;> aesop
 
 lemma exists_interval_measure_inter_gt_mul_measure
