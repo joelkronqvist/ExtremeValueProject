@@ -162,7 +162,6 @@ lemma IsOpen.countable_setOf_connectedComponentIn
     exact congr_arg (Subtype.val '' ·) hψC
   exact Function.Injective.countable ψ_inj
 
-
 private lemma sSup_not_mem_interior
     {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
     [OrderTopology α] [DenselyOrdered α] [NoMaxOrder α] [NoMinOrder α]
