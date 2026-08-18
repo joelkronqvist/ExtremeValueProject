@@ -208,8 +208,7 @@ lemma iUnion_Ioo_eq_Ioo_sdiff_singletons
       _ = Ioo (f 0) (f (m + 1)) \ ({f m} ∪ f '' Ioo 0 m)                 := by rw [sdiff_sdiff]
       _ = Ioo (f 0) (f (m + 1)) \ f '' Ioo 0 (m + 1)                     := by
          by_cases m_zero : m = 0
-         · have : (Ioo 0 1 : Set ℕ) = ∅ := by simp
-           simp [m_zero, this]
+         · simp [m_zero, show Ioo 0 1 = ∅ by simp]
          suffices (Ioo 0 (m + 1) : Set ℕ) = {m} ∪ Ioo 0 m by rw [this, image_union, image_singleton]
          ext n
          simp only [Set.mem_Ioo, Set.mem_union, Set.mem_singleton_iff]
@@ -247,10 +246,10 @@ lemma exists_subinterval_preserving_volume_property
     unfold j₁
     show a + (b - a) * ((((m - 1 : ℕ) : ℝ) + 1) / m) = b
     have m_ne_zero : m ≠ 0 := by exact Nat.ne_zero_of_lt m_pos
-    have : (((m - 1 : ℕ) : ℝ) + 1) / m = 1 := by
+    have simp_coe : (((m - 1 : ℕ) : ℝ) + 1) / m = 1 := by
       norm_num [Nat.cast_sub m_pos]
       exact m_ne_zero
-    rw [this]
+    rw [simp_coe]
     field
   have Ji_sub_Ioo (i : Fin m) : (J i) ⊆ Ioo a b := by
     apply Set.Ioo_subset_Ioo
@@ -261,29 +260,23 @@ lemma exists_subinterval_preserving_volume_property
   have J_disj : Pairwise (Function.onFun Disjoint fun i : Fin m ↦ J i) := by
     intro i j i_ne_j
     unfold Function.onFun
-    rw [Set.Ioo_disjoint_Ioo]
-    rw [← Monotone.map_min j₁_strict.monotone]
-    rw [← Monotone.map_max j₀_strict.monotone]
-    have : (min i j : ℕ) + 1 ≤ max i j := by
-      have : (min i j : ℕ) < max i j := by
-        exact_mod_cast inf_lt_sup.mpr i_ne_j
-      exact Order.add_one_le_iff.mpr this
-    show j₁ (min i j) ≤ j₀ (max i j)
+    rw [Ioo_disjoint_Ioo, ← Monotone.map_min j₁_strict.monotone,
+        ← Monotone.map_max j₀_strict.monotone]
+    have aux : (min i j : ℕ) + 1 ≤ max i j := by
+      exact Order.add_one_le_iff.mpr (by exact_mod_cast inf_lt_sup.mpr i_ne_j)
     unfold j₁
-    exact_mod_cast Monotone.imp j₀_strict.monotone this
+    exact_mod_cast Monotone.imp j₀_strict.monotone aux
   have interval_eq_subintervals : volume (A ∩ ⋃ (i : Fin m), J i) = volume (A ∩ Ioo a b) := by
     apply MeasureTheory.measure_eq_measure_of_null_sdiff
     · apply Set.inter_subset_inter_right
       exact iUnion_subset Ji_sub_Ioo
-    · have : (A ∩ Ioo a b) \ (A ∩ ⋃ (i : Fin m), J ↑i) ⊆ j₀ '' Ioo 0 m := by
-        have : ⋃ (i : Fin m), Ioo (j₀ ↑i) (j₀ (↑i + 1)) = ⋃ (i : Fin m), J ↑i := by
+    · have diff_sub_singletons : (A ∩ Ioo a b) \ (A ∩ ⋃ (i : Fin m), J ↑i) ⊆ j₀ '' Ioo 0 m := by
+        have J_by_j₀ (i : Fin m) : J i = Ioo (j₀ i) (j₀ (i + 1)) := by
           simp [J, j₁_eq_j₀_comp_add_one]
-        simp [← this, iUnion_Ioo_eq_Ioo_sdiff_singletons m j₀_strict.monotone, j₀0_eq_a, j₀m_eq_b]
+        simp [J_by_j₀, iUnion_Ioo_eq_Ioo_sdiff_singletons m j₀_strict.monotone, j₀0_eq_a, j₀m_eq_b]
         grind
-      rw [measure_mono_null (μ := volume) this]
-      rw [measure_null_iff_singleton]
-      · exact fun x a ↦ volume_singleton
-      · exact Countable.image (to_countable (Ioo 0 m)) j₀
+      suffices volume (j₀ '' Ioo 0 m) = 0 by rw [measure_mono_null diff_sub_singletons this]
+      simp [measure_null_iff_singleton (Countable.image (to_countable (Ioo 0 m)) j₀)]
   by_contra hc
   change ¬∃ i : Fin m, r * volume (J i) < volume (A ∩ J i) at hc
   rw [not_exists] at hc
