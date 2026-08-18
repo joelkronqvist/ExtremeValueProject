@@ -238,7 +238,7 @@ lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U) (U_lt_top : volume U < ⊤) :
     ∃ a b : ℝ, a < b ∧ U = Ioo a b := by
   have U_nonempty : U.Nonempty := U_conn.left
-  have babove : BddAbove U := by
+  have U_bddAbove : BddAbove U := by
     by_contra ub
     obtain ⟨x, hx⟩ := U_nonempty
     have Ioi_x_subset_U : Ioi x ⊆ U := fun y hy ↦
@@ -247,14 +247,14 @@ lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_volume_lt_top
     have contradiction : volume U = ⊤ :=
       MeasureTheory.measure_eq_top_mono Ioi_x_subset_U volume_Ioi
     exact (LT.lt.ne_top U_lt_top) contradiction
-  have bbelow : BddBelow U := by
+  have U_bddBelow : BddBelow U := by
     by_contra ub
-    have Iio_subset_U := U_conn.isPreconnected.Iio_csSup_subset ub babove
+    have Iio_subset_U := U_conn.isPreconnected.Iio_csSup_subset ub U_bddAbove
     have contradiction : volume U = ⊤ :=
       MeasureTheory.measure_eq_top_mono Iio_subset_U volume_Iio
     exact (LT.lt.ne_top U_lt_top) contradiction
   obtain ⟨a, b, U_is_Ioo⟩ :=
-    Real.eq_Ioo_of_isOpen_of_isConnected_of_bddBelow_bddAbove U_open U_conn bbelow babove
+    Real.eq_Ioo_of_isOpen_of_isConnected_of_bddBelow_bddAbove U_open U_conn U_bddBelow U_bddAbove
   refine ⟨a, b, ?_, ?_⟩ <;> aesop
 
 lemma exists_interval_measure_inter_gt_mul_measure
