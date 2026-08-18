@@ -162,33 +162,49 @@ lemma IsOpen.countable_setOf_connectedComponentIn
     exact congr_arg (Subtype.val '' ·) hψC
   exact Function.Injective.countable ψ_inj
 
-private lemma x_ne_sup
-    {U : Set ℝ} (U_open : IsOpen U) (babove : BddAbove U) {x : ℝ} (hx : x ∈ U) :
-    x ≠ sSup U := by
-  by_contra x_eq_sup
-  obtain ⟨ε, ε_pos, ball_sub_U⟩ : ∃ ε > 0, Metric.ball x ε ⊆ U := Metric.isOpen_iff.mp U_open x hx
-  suffices x + ε / 2 ≤ sSup U by linarith
-  refine le_csSup babove (mem_of_subset_of_mem ball_sub_U ?_)
-  grw [Metric.mem_ball, Real.dist_eq]
-  simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
 
-private lemma x_ne_inf
-    {U : Set ℝ} (U_open : IsOpen U) (bbelow : BddBelow U) {x : ℝ} (hx : x ∈ U) :
-    sInf U ≠ x := by
-  by_contra x_eq_inf
-  obtain ⟨ε, ε_pos, ball_sub_U⟩ : ∃ ε > 0, Metric.ball x ε ⊆ U := Metric.isOpen_iff.mp U_open x hx
-  suffices sInf U ≤ x - ε / 2 by linarith
-  refine csInf_le bbelow (mem_of_subset_of_mem ball_sub_U ?_)
-  grw [Metric.mem_ball, Real.dist_eq]
-  simp [abs_of_pos (show 0 < ε / 2 by positivity), ε_pos]
+private lemma sSup_not_mem_interior
+    {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
+    [OrderTopology α] [DenselyOrdered α] [NoMaxOrder α] [NoMinOrder α]
+    {U : Set α} (U_bdd_above : BddAbove U) :
+    sSup U ∉ interior U := by
+  by_cases U_nonempty : U.Nonempty
+  · intro sup_in_interior
+    obtain ⟨_, _, mem_Ioo, Ioo_sub_U⟩ : ∃ l u, sSup U ∈ Ioo l u ∧ Ioo l u ⊆ U := by
+      simpa [mem_interior_iff_mem_nhds, mem_nhds_iff_exists_Ioo_subset] using sup_in_interior
+    obtain ⟨a, sup_lt_a, a_lt_u⟩ := exists_between mem_Ioo.right
+    have a_in_U : a ∈ U := Ioo_sub_U ⟨lt_trans mem_Ioo.left sup_lt_a, a_lt_u⟩
+    exact (not_lt_of_ge (le_csSup U_bdd_above a_in_U)) sup_lt_a
+  · rw [not_nonempty_iff_eq_empty] at U_nonempty
+    simp [U_nonempty]
+
+@[to_dual existing]
+private lemma sInf_not_mem_interior
+    {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
+    [OrderTopology α] [DenselyOrdered α] [NoMinOrder α] [NoMaxOrder α]
+    {U : Set α} (U_bdd_below : BddBelow U) :
+    sInf U ∉ interior U := by
+  change sSup (α := αᵒᵈ) U ∉ interior U
+  exact sSup_not_mem_interior U_bdd_below
+
+@[to_dual]
+private lemma x_ne_sSup
+    {α : Type*} [TopologicalSpace α] [ConditionallyCompleteLinearOrder α]
+    [OrderTopology α] [DenselyOrdered α] [NoMaxOrder α] [NoMinOrder α]
+    {U : Set α} (U_open : IsOpen U) (babove : BddAbove U)
+    {x : α} (x_in_U : x ∈ U) :
+    x ≠ sSup U := by
+  intro x_eq_sup
+  rw [← IsOpen.interior_eq U_open, x_eq_sup] at x_in_U
+  exact (sSup_not_mem_interior babove) x_in_U
 
 lemma Real.eq_Ioo_of_isOpen_of_isConnected_of_bdd
     {U : Set ℝ} (U_open : IsOpen U) (U_conn : IsConnected U)
     (U_bdda : BddAbove U) (U_bddb : BddBelow U) :
     ∃ a b, U = Ioo a b := by
   refine ⟨sInf U, sSup U, Subset.antisymm (fun x hx ↦ ⟨?_, ?_⟩) ?_⟩
-  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_inf U_open U_bddb hx)
-  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sup U_open U_bdda hx)
+  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_sInf U_open U_bddb hx).symm
+  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sSup U_open U_bdda hx)
   · apply U_conn.Ioo_csInf_csSup_subset <;> assumption
 
 lemma Real.eq_Iio_of_isOpen_of_isConnected_of_bdda_ubb
@@ -196,7 +212,7 @@ lemma Real.eq_Iio_of_isOpen_of_isConnected_of_bdda_ubb
     (U_bdda : BddAbove U) (U_ubb : ¬BddBelow U) :
     ∃ a, U = Iio a := by
   refine ⟨sSup U, Subset.antisymm (fun x hx ↦ ?_) ?_⟩
-  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sup U_open U_bdda hx)
+  · exact Std.lt_of_le_of_ne (le_csSup U_bdda hx) (x_ne_sSup U_open U_bdda hx)
   · apply U_conn.isPreconnected.Iio_csSup_subset <;> assumption
 
 lemma Real.eq_Ioi_of_isOpen_of_isConnected_of_uba_bddb
@@ -204,7 +220,7 @@ lemma Real.eq_Ioi_of_isOpen_of_isConnected_of_uba_bddb
     (U_bdda : ¬BddAbove U) (U_bddb : BddBelow U) :
     ∃ a, U = Ioi a := by
   refine ⟨sInf U, Subset.antisymm (fun x hx ↦ ?_) ?_⟩
-  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_inf U_open U_bddb hx)
+  · exact Std.lt_of_le_of_ne (csInf_le U_bddb hx) (x_ne_sInf U_open U_bddb hx).symm
   · apply U_conn.isPreconnected.Ioi_csInf_subset <;> assumption
 
 lemma Real.eq_Ioo_or_Iio_or_Ioi_or_univ_of_isOpen_of_isConnected
