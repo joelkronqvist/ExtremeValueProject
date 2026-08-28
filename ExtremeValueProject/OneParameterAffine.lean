@@ -284,6 +284,16 @@ lemma exists_forall_abs_le_of_additive_of_le_on_measure_pos
     {A : Set ℝ} (A_mble : MeasurableSet A) (A_pos : 0 < volume A)
     {M : ℝ} (f_bdd_on_A : ∀ a ∈ A, f a ≤ M) :
     ∃ δ > 0, ∃ c, ∀ x ∈ Ioo (-δ) δ, |f x| ≤ c := by
+  let f' : ℝ →+ ℝ := {
+    toFun := f,
+    map_zero' := by
+      suffices h : f 0 + f 0 = f 0 by simpa using congrArg (· - f 0) h
+      simp [← f_add 0 0],
+    map_add' := f_add
+  }
+  let f := f'.toRatLinearMap
+  have f_bdd_on_A : ∀ a ∈ A, f a ≤ M := by aesop
+  change ∃ δ > 0, ∃ c, ∀ x ∈ Ioo (-δ) δ, |f x| ≤ c
   obtain ⟨x₁, x₂, x₁_lt_x₂, h_Ioo⟩ := exists_Ioo_subset_add_of_measure_pos A_mble A_pos
   let y := (x₁ + x₂) / 2
   let δ := (x₂ - x₁) / 2
@@ -294,7 +304,7 @@ lemma exists_forall_abs_le_of_additive_of_le_on_measure_pos
     calc
           f t
       _ = f (a + b - y)   := by rw [(by linarith : t = a + b - y)]
-      _ = f a + f b - f y := by rw [RealAdditive.map_sub' f_add, f_add]
+      _ = f a + f b - f y := by rw [f.map_sub, f.map_add]
       _ ≤ 2*M - f y       := by grw [f_bdd_on_A a ha, f_bdd_on_A b hb, two_mul]
   have neg : ∀ t ∈ Ioo (-δ) δ, - (2 * M - f y) ≤ f t := by
     intro t abs_t_lt_δ
@@ -303,7 +313,7 @@ lemma exists_forall_abs_le_of_additive_of_le_on_measure_pos
     calc
           - (2 * M - f y)
       _ ≤ - f (-t)        := by linarith
-      _ = f t             := by simp [RealAdditive.map_neg' f_add]
+      _ = f t             := by simp [f.map_neg]
   intro t abs_t_lt_δ
   apply abs_le.mpr; constructor
   · simpa using neg t abs_t_lt_δ
